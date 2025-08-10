@@ -1,0 +1,75 @@
+✅ Frontend (TypeScript + Tailwind)
+
+Interface utilisateur du jeu Pong.
+
+Dialogue avec Fastify (API) ou PHP (API) via requêtes HTTP/HTTPS.
+
+Envoie le JWT dans les requêtes pour authentification.
+
+Gère l’UI pour la 2FA (affichage QR code, champ TOTP).
+
+✅ Fastify (Node.js)
+
+Fournit des endpoints API éventuels (si nécessaire).
+
+Peut interagir avec Vault via node-vault.
+
+Peut éventuellement gérer des fonctionnalités temps réel (WebSocket).
+
+✅ PHP Backend
+
+Traite la majorité de la logique applicative (gestion des utilisateurs, JWT, 2FA, GDPR).
+
+Utilise :
+
+firebase/php-jwt pour signer/vérifier les JWT.
+
+spomky-labs/otphp pour gérer la 2FA (TOTP).
+
+endroid/qr-code pour générer les QR codes.
+
+✅ Nginx
+
+Sert de reverse proxy pour acheminer les requêtes vers :
+
+Fastify
+
+PHP (via PHP-FPM)
+
+Filtre les requêtes avec :
+
+ModSecurity (module branché à Nginx).
+
+OWASP CRS pour bloquer les attaques web courantes.
+
+✅ ModSecurity
+
+Module de sécurité branché à Nginx.
+
+Analyse les requêtes HTTP et applique les règles de sécurité (XSS, SQLi, etc.).
+
+Peut bloquer ou alerter selon les réglages.
+
+✅ SQLite
+
+Stocke les données utilisateur localement (identifiants, préférences, historique).
+
+Chiffrement éventuel des données sensibles (password hashé, pseudonymisation).
+
+✅ HashiCorp Vault
+
+Stocke les secrets sensibles :
+
+Clé de signature JWT.
+
+Secrets TOTP si besoin.
+
+Éventuellement d’autres credentials (future extension).
+
+Sécurisé avec token d’accès et API HTTP.
+
+Accessible depuis :
+
+PHP (via cURL ou bibliothèque)
+
+Node.js (via node-vault).

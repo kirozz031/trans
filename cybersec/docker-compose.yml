@@ -1,0 +1,37 @@
+services:
+  nginx:
+    image: nginx-modsec
+    container_name: nginx-modsec
+    build: 
+      context: ./srcs/nginx
+      dockerfile: Dockerfile
+    volumes:
+      - ./srcs/nginx/html:/usr/share/nginx/html
+      - ./srcs/php:/var/www/html
+      - ./srcs/nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./srcs/nginx/conf/modsecurity.conf:/opt/modsecurity/modsecurity.conf
+      - ./srcs/nginx/modsecurity.log:/var/log/modsec_audit.log
+    ports:
+      - "8080:80"
+    depends_on:
+      - php
+    networks:
+      - webnet
+
+  php:
+    image: php-fpm
+    container_name: php-fpm
+    build: 
+      context: ./srcs/php
+      dockerfile: Dockerfile
+    volumes:
+      - ./srcs/php:/var/www/html
+      # - ./srcs/php/data:/var/www/html/data
+    expose:
+      - "9000"
+    networks:
+      - webnet
+
+networks:
+  webnet:
+    name: webnet

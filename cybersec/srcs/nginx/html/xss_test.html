@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test XSS / ModSecurity</title>
+</head>
+<body>
+  <h1>Formulaire test XSS</h1>
+  <form method="GET" action="/sqli_test.php">
+    <input type="text" name="input" placeholder="Tapez ici">
+    <button type="submit">Envoyer</button>
+  </form>
+</body>
+</html>

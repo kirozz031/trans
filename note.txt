@@ -1,0 +1,72 @@
+base :  
+- Authentification (login/register côté front)
+- Navigation entre les pages (accueil, pong, profil, paramètres…)
+- Un Pong jouable en solo côté front
+
+---
+
+### 1. **Sécuriser et connecter la gestion utilisateur**
+- **Actuellement** : la gestion des users (login/register) est simulée côté front.
+- **À faire** :  
+  - Créer un backend (Node.js, NestJS, etc.) pour gérer :
+    - L’inscription (sauvegarder les users en base de données)
+    - La connexion (vérifier le mot de passe)
+    - Les sessions/tokens pour rester connecté
+  - Connecter ton front à ce backend via des requêtes HTTP (fetch/axios).
+
+---
+
+### 2. **Améliorer le jeu Pong**
+- **Solo** : tu peux améliorer le jeu (score, IA, reset, etc.).
+- **Multijoueur** (optionnel mais recommandé pour un projet complet) :
+  - Créer un backend qui gère la logique du jeu (voir plus haut).
+  - Utiliser WebSocket (ex : socket.io) pour synchroniser les joueurs.
+  - Le front envoie les mouvements, le back arbitre et renvoie l’état du jeu.
+
+---
+
+### 3. **Matchmaking**
+- **À faire** :
+  - Quand un joueur clique sur “Match-Making”, il doit être mis en attente d’un adversaire.
+  - Quand deux joueurs sont prêts, le backend crée une partie et les connecte.
+  - Le front affiche la recherche, puis le jeu quand un adversaire est trouvé.
+
+---
+
+### 4. **Gestion du profil utilisateur**
+- **À faire** :
+  - Permettre à l’utilisateur de voir/modifier son profil (pseudo, email…)
+  - Récupérer ces infos depuis le backend.
+
+---
+
+### 5. **Scores et historique**
+- **À faire** :
+  - Sauvegarder les scores des parties (dans le backend)
+  - Afficher le classement ou l’historique des parties sur le front
+
+---
+
+### 6. **Finitions UI/UX**
+- Améliorer le design, les transitions, les messages d’erreur, etc.
+
+---
+
+## **Résumé étape par étape**
+
+1. **Créer un backend** (Node.js/NestJS/Express) pour :
+   - Authentification (register/login)
+   - Gestion des users
+   - (Optionnel) Logique du jeu multi et matchmaking
+
+2. **Connecter le front au back** (fetch/axios pour l’auth, socket.io pour le jeu multi)
+
+3. **Améliorer le jeu Pong** (solo ou multi)
+
+4. **Gérer le profil et les scores**
+
+5. **Soigner l’interface**
+
+---
+
+**Besoin d’un plan détaillé pour une de ces étapes ? Dis-moi ce que tu veux faire en priorité (authentification réelle, matchmaking, Pong multi, etc.) et je te guide étape par étape avec exemples de code si besoin.**

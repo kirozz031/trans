@@ -1,0 +1,26 @@
+!!!! TAILLE AVATARS A REGLER ET C'EST FINITO ET CLEAN !!!!
+
+!!!! MODULE CYBERSEC A IMPLEMENTER !!!!
+
+avatars good, a voir pour la taille qui bloque quand meme au dessus de 15kb -> apres avoir termine le module
+
+Comment intégrer le module cybersec dans ton dossier srcs ?
+Choisis ton architecture cible :
+
+Si tu veux migrer vers Fastify/Node.js (module backend framework), inspire-toi de la logique PHP pour réécrire les endpoints en TypeScript.
+Sinon, tu peux intégrer les endpoints PHP directement dans ton infra, en gardant Nginx comme reverse proxy.
+Ajoute la couche sécurité à ton backend actuel :
+
+ModSecurity : adapte la config Nginx de cybersec dans ton propre back ou fusionne les Dockerfiles.
+Endpoints RGPD/2FA : réimplémente ou adapte les scripts PHP dans ton backend Node.js, ou conserve-les et fais pointer tes routes /api/rgpd/* vers les scripts PHP via Nginx.
+Synchronise la gestion des utilisateurs :
+
+Si tu utilises déjà SQLite, adapte le schéma de table pour inclure les champs nécessaires (2FA, anonymisation, etc.).
+Pour JWT, adapte la logique de génération/validation dans ton backend principal.
+Frontend :
+
+Ajoute les boutons/actions RGPD et 2FA dans tes vues React/TS ou adapte le JS vanilla de login.html.
+Utilise le même flux d’authentification (stockage JWT, appels API protégés).
+Tests :
+
+Utilise les pages de test (xss_test.html, register.html, login.html) pour valider la sécurité de bout en bout.

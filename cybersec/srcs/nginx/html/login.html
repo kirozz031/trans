@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion utilisateur</title>
+</head>
+<body>
+  <h1>Connexion</h1>
+  <form id="loginForm">
+    <label>Email : <input type="email" name="email" required></label><br><br>
+    <label>Code 2FA (si activé) : <input type="text" name="code"></label><br><br>
+    <label>Mot de passe : <input type="password" name="password" required></label><br><br>
+    <button type="submit">Se connecter</button>
+  </form>
+
+  <p id="errorMessage" style="color: red;"></p>
+
+  <h2>Token JWT :</h2>
+  <pre id="tokenBox">(en attente)</pre>
+
+  <h2>Profil utilisateur :</h2>
+  <pre id="profileBox">(non chargé)</pre>
+
+  <h2>Déconnexion :</h2>
+  <button id="logoutBtn">Se déconnecter</button>
+
+  <button id="deleteAccountButton">Supprimer mon compte</button>
+
+  <button id="anonymizeAccountButton">Anonymiser mon compte</button>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const tokenBox = document.getElementById('tokenBox');
+    const profileBox = document.getElementById('profileBox');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // 🔁 Charger le token s'il est déjà en localStorage
+    let currentToken = localStorage.getItem('jwt_token');
+    if (currentToken) {
+      tokenBox.textContent = currentToken;
+      loadProfile();
+    }
+
+    // 🔐 Connexion
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(loginForm);
+      const credentials = {
+        email: formData.get('email'),
+        password: formData.get('password'),
+        code: formData.get('code')
+      };
+
+      const res = await fetch('/login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+
+      let result = {};
+      try {
+        result = await res.json();
+      } catch (e) {
+        result = { error: 'Réponse invalideeeeee du serveur' };
+      }
+
+      if (res.ok && result.token) {
+        currentToken = result.token;
+        localStorage.setItem('jwt_token', currentToken);
+        tokenBox.textContent = currentToken;
+        loadProfile();
+        document.getElementById('errorMessage').textContent = '';
+      } else {
+        tokenBox.textContent = '(échec)';
+        profileBox.textContent = '(non chargé)';
+        document.getElementById('errorMessage').textContent =
+          result.error || 'Erreur inconnue (' + res.status + ')';
+      }
+    });
+
+    // 👤 Charger le profil protégé
+    async function loadProfile() {
+      if (!currentToken) return;
+
+      const res = await fetch('/rgpd/me.php', {
+        headers: { 'Authorization': 'Bearer ' + currentToken }
+      });
+
+      let result = {};
+      try {
+        result = await res.json();
+        profileBox.textContent = JSON.stringify(result, null, 2);
+      } catch (e) {
+        result = { error: 'Réponse invalide du serveur' };
+      }
+      // const result = await res.json();
+    }
+
+    document.getElementById('deleteAccountButton').addEventListener('click', async () => {
+    if (!currentToken) {
+      alert("Vous n'êtes pas connecté.");
+      return;
+    }
+
+    const confirmation = confirm("Es-tu sûr de vouloir supprimer ton compte ?");
+    if (!confirmation) return;
+
+    const res = await fetch('/rgpd/delete_account.php', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + currentToken
+      }
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert(result.message);
+      localStorage.removeItem('jwt_token');
+      window.location.href = 'login.html';
+    } else {
+      alert(result.error || "Erreur inconnue.");
+    }
+    });
+
+    document.getElementById('anonymizeAccountButton').addEventListener('click', async () => {
+    if (!currentToken) {
+      alert("Vous n'êtes pas connecté.");
+      return;
+    }
+
+    const confirmation = confirm("Souhaitez-vous vraiment anonymiser votre compte ? Cette action est irréversible.");
+    if (!confirmation) return;
+
+    const res = await fetch('/rgpd/anonymize_account.php', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + currentToken
+      }
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert(result.message);
+      localStorage.removeItem('jwt_token');
+      window.location.href = 'login.html';
+    } else {
+      alert(result.error || "Erreur inconnue.");
+    }
+  });
+
+    // 🚪 Déconnexion
+    logoutBtn.addEventListener('click', () => {
+      window.location.href = 'logout.html';
+      // currentToken = null;
+      // localStorage.removeItem('jwt_token');
+      // tokenBox.textContent = '(en attente)';
+      // profileBox.textContent = '(non chargé)';
+      // loginForm.reset();
+      // alert('Vous êtes déconnecté.');
+    });
+  </script>
+</body>
+</html>
