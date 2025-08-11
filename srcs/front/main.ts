@@ -34,19 +34,37 @@ const profileHistory = document.getElementById('profile-history') as HTMLDivElem
 const tournamentSection = document.getElementById('tournament-section') as HTMLDivElement | null;
 const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElement | null;
 
+// let pingInterval: number | undefined;
+
+
+// pingInterval = setInterval(async () => {
+//   const userId = localStorage.getItem('userId');
+//   if (userId) {
+//     console.log('Pinging server for user:', userId);
+//     await fetch('/api/ping', {
+//       method: 'POST',
+//       headers: { 'X-User-Id': userId }
+//     });
+//   }
+// }, 10_000);
+
+
 let pingInterval: number | undefined;
 
-
-pingInterval = setInterval(async () => {
-  const userId = localStorage.getItem('userId');
-  if (userId) {
-    console.log('Pinging server for user:', userId);
+pingInterval = window.setInterval(async () => {
+  try {
     await fetch('/api/ping', {
       method: 'POST',
-      headers: { 'X-User-Id': userId }
+      credentials: 'include'
     });
+  } catch (error) {
+    console.error('Ping failed:', error);
   }
 }, 10_000);
+
+// when you need to stop it:
+// if (pingInterval !== undefined) window.clearInterval(pingInterval);
+
 
 if (tournoisBtn && tournamentSection) {
   tournoisBtn.addEventListener('click', () => {
@@ -82,17 +100,22 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     showRegisterBtn.classList.add('hidden');
     log_page?.classList.add('hidden');
     drawHomePong();
-    fetch('/api/me')
-      .then(res => res.json())
-      .then(user => {
+    fetch('/api/me', { credentials: 'include' })
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then((user) => {
         const avatarImg = document.getElementById('user-avatar') as HTMLImageElement;
         if (avatarImg) {
-          avatarImg.src = (user.avatar || '/avatars/default.png') + '?t=' + Date.now();
+          const src = user?.avatar ? user.avatar : '/avatars/default.png';
+          avatarImg.src = src + '?t=' + Date.now();
         }
         const displayNameSpan = document.getElementById('user-displayName') as HTMLSpanElement;
         if (displayNameSpan) {
-          displayNameSpan.textContent = user.displayName || 'Inconnu';
+          displayNameSpan.textContent = user?.displayName || 'Inconnu';
         }
+      })
+      .catch(() => {
+        const displayNameSpan = document.getElementById('user-displayName') as HTMLSpanElement;
+        if (displayNameSpan) displayNameSpan.textContent = 'Inconnu';
       });
     addLogoutButton();
   } else if (view === 'game') {
@@ -136,13 +159,14 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         let finished: boolean = false;
         ws = new WebSocket('ws://localhost:8081');
         ws.onopen = async () => {
-          const userId = localStorage.getItem('userId');
           const response = await fetch('/api/me', {
-            headers: { 'X-User-Id': userId || '' }
+            credentials: 'include'
           });
+          let userId = null;
           let displayName = 'Joueur';
           if (response.ok) {
             const userData = await response.json();
+            userId = userData.id;
             displayName = userData.displayName || 'Joueur';
           }
           ws.send(JSON.stringify({ type: 'join', userId, displayName }));
@@ -274,12 +298,15 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     homeSection.classList.remove('hidden');
     profileSection.classList.remove('hidden');
     showRegisterBtn.classList.add('hidden');
-    fetch('/api/me').then(res => res.json()).then(user => {
+    fetch('/api/me', { credentials: 'include' })
+      .then(async (res) => (res.ok ? res.json() : null))
+      .then(user => {
       if (profileEmail && profileDisplayName) {
-        profileEmail.value = user.email;
-        profileDisplayName.value = user.displayName;
+        profileEmail.value = user?.email || '';
+        profileDisplayName.value = user?.displayName || '';
         if (profileAvatarImg) {
-          profileAvatarImg.src = (user.avatar && user.avatar !== null ? user.avatar : '/avatars/default.png') + '?t=' + Date.now();
+          const src = user?.avatar ? user.avatar : '/avatars/default.png';
+          profileAvatarImg.src = src + '?t=' + Date.now();
         }
       }
       renderFriendsList();
@@ -321,8 +348,8 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     statusDot.style.backgroundColor = publicUser.online ? '#22c55e' : '#ef4444';
     statusText.textContent = publicUser.online ? 'en ligne' : 'hors ligne';
 
-    fetch('/api/me')
-      .then(res => res.json())
+    fetch('/api/me', { credentials: 'include' })
+      .then(async (res) => (res.ok ? res.json() : null))
       .then(me => {
         if (addFriendBtn) {
           if (me && me.displayName && publicUser.displayName && me.displayName !== publicUser.displayName) {
@@ -383,68 +410,147 @@ showRegisterBtn.addEventListener('click', () => {
   showView('register');
 });
 
+// registerForm.addEventListener('submit', async (e) => {
+//   e.preventDefault();
+//   const email = (document.getElementById('reg-email') as HTMLInputElement).value.trim();
+//   const password = (document.getElementById('reg-password') as HTMLInputElement).value.trim();
+//   const displayName = (document.getElementById('reg-displayName') as HTMLInputElement).value.trim();
+//   if (!email || !password || !displayName) {
+//     alert('Veuillez remplir tous les champs.');
+//     return;
+//   }
+//   const res = await fetch('/api/register', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ email, password, displayName })
+//   });
+//   if (res.ok) {
+//     const user = await res.json();
+//     if (regAvatar && regAvatar.files && regAvatar.files[0]) {
+//       const formData = new FormData();
+//       formData.append('file', regAvatar.files[0]);
+//       formData.append('userId', user.id);
+//       await fetch('/api/me/avatar', {
+//         method: 'POST',
+//         body: formData
+//       });
+//     }
+//     const loginRes = await fetch('/api/login', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ email, password })
+//     });
+//     if (loginRes.ok){
+//       alert('Compte créé, veuillez vous connecter.');
+//       showView('login');
+//     }
+//   } else {
+//     const data = await res.json();
+//     alert(data.error || 'Erreur lors de la création du compte');
+//   }
+// });
+
+
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = (document.getElementById('reg-email') as HTMLInputElement).value.trim();
   const password = (document.getElementById('reg-password') as HTMLInputElement).value.trim();
   const displayName = (document.getElementById('reg-displayName') as HTMLInputElement).value.trim();
+
   if (!email || !password || !displayName) {
     alert('Veuillez remplir tous les champs.');
     return;
   }
+
   const res = await fetch('/api/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, displayName })
   });
-  if (res.ok) {
-    const user = await res.json();
-    if (regAvatar && regAvatar.files && regAvatar.files[0]) {
-      const formData = new FormData();
-      formData.append('file', regAvatar.files[0]);
-      formData.append('userId', user.id);
-      await fetch('/api/me/avatar', {
-        method: 'POST',
-        body: formData
-      });
-    }
-    const loginRes = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    if (loginRes.ok){
-      alert('Compte créé, veuillez vous connecter.');
-      showView('login');
-    }
-  } else {
-    const data = await res.json();
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({} as any));
     alert(data.error || 'Erreur lors de la création du compte');
+    return;
   }
+
+  alert('Compte créé. Veuillez vous connecter.');
+  showView('login');
 });
+
+
+// loginForm.addEventListener('submit', async (e) => {
+//   e.preventDefault();
+//   const email = (document.getElementById('email') as HTMLInputElement).value.trim();
+//   const password = (document.getElementById('password') as HTMLInputElement).value.trim();
+//   if (!email || !password) {
+//     alert('Veuillez remplir tous les champs.');
+//     return;
+//   }
+//   const res = await fetch('/api/login', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ email, password })
+//   });
+//   if (res.ok) {
+//     const user = await res.json();
+//     localStorage.setItem('userId', user.id);
+//     showView('home');
+//   } else {
+//     const data = await res.json();
+//     alert(data.error || 'Erreur de connexion');
+//   }
+// });
+
 
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = (document.getElementById('email') as HTMLInputElement).value.trim();
   const password = (document.getElementById('password') as HTMLInputElement).value.trim();
+
   if (!email || !password) {
     alert('Veuillez remplir tous les champs.');
     return;
   }
-  const res = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  if (res.ok) {
-    const user = await res.json();
-    localStorage.setItem('userId', user.id);
-    showView('home');
-  } else {
-    const data = await res.json();
-    alert(data.error || 'Erreur de connexion');
+
+  const attempt = async (otp?: string): Promise<Response> => {
+    return fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // <- HttpOnly cookie
+      body: JSON.stringify({ email, password, otp })
+    });
+  };
+
+  let res = await attempt();
+
+  if (res.status === 206) {
+    const code = prompt('Entrez le code à 6 chiffres de votre application Authenticator :') || '';
+    if (!/^[0-9]{6}$/.test(code)) {
+      alert('Code invalide');
+      return;
+    }
+    res = await attempt(code);
   }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({} as any));
+    alert(data.error || 'Erreur de connexion');
+    return;
+  }
+
+  // Optional: fetch /api/me to know who is logged in and store the ID if you use it elsewhere.
+  try {
+    const meRes = await fetch('/api/me', { credentials: 'include' });
+    if (meRes.ok) {
+      const me = await meRes.json();
+      localStorage.setItem('userId', me.id); // only if your app expects this
+    }
+  } catch {}
+
+  showView('home');
 });
+
 
 if (goGameBtn) {
   goGameBtn.addEventListener('click', () => {
@@ -470,6 +576,53 @@ if (backHomeProfileBtn) {
   });
 }
 
+// if (profileForm) {
+//   profileForm.addEventListener('submit', async (e) => {
+//     e.preventDefault();
+//     if (!profileEmail || !profileDisplayName) return;
+//     const email = profileEmail.value.trim();
+//     const displayName = profileDisplayName.value.trim();
+
+//     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
+//       if (profileAvatar.files[0].size > 50 * 1024) {
+//         alert('Avatar trop volumineux (max 50kb).');
+//         return;
+//       }
+//     }
+
+//     const res = await fetch('/api/me', {
+//       method: 'PUT',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ email, displayName })
+//     });
+//     let avatarUrl: string | undefined;
+//     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
+//       const userRes = await fetch('/api/me');
+//       const user = await userRes.json();
+//       const formData = new FormData();
+//       formData.append('file', profileAvatar.files[0]);
+//       const avatarRes = await fetch('/api/me/avatar', {
+//         method: 'POST',
+//         body: formData
+//       });
+//       if (avatarRes.ok) {
+//         const data = await avatarRes.json();
+//         avatarUrl = data.avatar;
+//       }
+//     }
+//     if (res.ok) {
+//       alert('Profil mis à jour !');
+//       if (avatarUrl && profileAvatarImg) {
+//         profileAvatarImg.src = avatarUrl + '?t=' + Date.now();
+//       }
+//       showView('profile', false);
+//     } else {
+//       const data = await res.json();
+//       alert(data.error || 'Erreur lors de la mise à jour');
+//     }
+//   });
+// }
+
 if (profileForm) {
   profileForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -487,23 +640,32 @@ if (profileForm) {
     const res = await fetch('/api/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',                 // <- add this
       body: JSON.stringify({ email, displayName })
     });
+
     let avatarUrl: string | undefined;
+
     if (profileAvatar && profileAvatar.files && profileAvatar.files[0]) {
-      const userRes = await fetch('/api/me');
+      // If you still need the user object, fetch it with credentials too
+      const userRes = await fetch('/api/me', { credentials: 'include' }); // <- add this
       const user = await userRes.json();
+
       const formData = new FormData();
       formData.append('file', profileAvatar.files[0]);
+
       const avatarRes = await fetch('/api/me/avatar', {
         method: 'POST',
+        credentials: 'include',               // <- add this
         body: formData
       });
+
       if (avatarRes.ok) {
         const data = await avatarRes.json();
         avatarUrl = data.avatar;
       }
     }
+
     if (res.ok) {
       alert('Profil mis à jour !');
       if (avatarUrl && profileAvatarImg) {
@@ -517,6 +679,8 @@ if (profileForm) {
   });
 }
 
+
+
 if (searchUserBtn && searchUserInput && searchUserResult) {
   searchUserBtn.addEventListener('click', async () => {
     const displayName = searchUserInput.value.trim();
@@ -525,7 +689,9 @@ if (searchUserBtn && searchUserInput && searchUserResult) {
       searchUserResult.textContent = 'Veuillez entrer un pseudo.';
       return;
     }
-    const res = await fetch(`/api/user/${encodeURIComponent(displayName)}`);
+    const res = await fetch(`/api/user/${encodeURIComponent(displayName)}`, { 
+      credentials: 'include' 
+    });
     if (res.ok) {
       const user = await res.json();
       searchUserResult.innerHTML = `
@@ -558,7 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const deleteAvatarBtn = document.getElementById('delete-avatar');
   if (deleteAvatarBtn) {
     deleteAvatarBtn.addEventListener('click', async () => {
-      await fetch('/api/me/avatar', { method: 'DELETE' });
+      // await fetch('/api/me/avatar', { method: 'DELETE' });
+      await fetch('/api/me/avatar', { method: 'DELETE', credentials: 'include' });
       showView('profile', false);
     });
   }
@@ -590,13 +757,29 @@ async function renderMatchHistory() {
   if (!historyList || !statsDiv) return;
 
   try {
-    const res = await fetch('/api/matches/history');
+    console.log('Fetching match history...');
+    
+    // D'abord récupérer les infos de l'utilisateur actuel
+    const userRes = await fetch('/api/me', { credentials: 'include' });
+    if (!userRes.ok) {
+      historyList.textContent = 'Erreur d\'authentification.';
+      return;
+    }
+    const currentUser = await userRes.json();
+    
+    const res = await fetch('/api/matches/history', { credentials: 'include' });
+    console.log('Response status:', res.status);
+    console.log('Response ok:', res.ok);
+    
     if (!res.ok) {
+      const errorText = await res.text();
+      console.log('Error response:', errorText);
       historyList.textContent = 'Erreur lors du chargement de l\'historique.';
       return;
     }
 
     const matches = await res.json();
+    console.log('Matches received:', matches);
     
     if (matches.length === 0) {
       historyList.textContent = 'Aucune partie jouée pour le moment.';
@@ -607,9 +790,9 @@ async function renderMatchHistory() {
     // Afficher l'historique des matches
     historyList.innerHTML = matches.map((match: any) => {
       const isWinner = match.isWinner;
-      const opponent = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player2 : match.player1;
-      const userScore = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player1Score : match.player2Score;
-      const opponentScore = match.player1.id === parseInt(localStorage.getItem('userId') || '0') ? match.player2Score : match.player1Score;
+      const opponent = match.player1.id === currentUser.id ? match.player2 : match.player1;
+      const userScore = match.player1.id === currentUser.id ? match.player1Score : match.player2Score;
+      const opponentScore = match.player1.id === currentUser.id ? match.player2Score : match.player1Score;
       
       let matchTypeLabel = '';
       if (match.matchType === 'TOURNAMENT_SEMI') {
@@ -624,8 +807,8 @@ async function renderMatchHistory() {
         <div class="bg-gray-800 p-3 rounded mb-2">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center">
-              <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
               <span class="font-semibold">vs ${opponent.displayName}</span>
+              <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
             </div>
             <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
               ${isWinner ? 'VICTOIRE' : 'DÉFAITE'}
@@ -695,7 +878,7 @@ if (tournamentSection) {
       const slot = target.dataset.slot;
       target.textContent = 'En attente...';
       target.setAttribute('disabled', 'true');
-      const userId = localStorage.getItem('userId');
+      
       const ws = new WebSocket('ws://localhost:8082');
       let gameWs: WebSocket | null = null;
       let playernumber: number | null = null;
@@ -707,22 +890,29 @@ if (tournamentSection) {
       let player2Name = 'Joueur 2';
 
       ws.onopen = async () => {
-        const response = await fetch('/api/me', {
-          headers: { 'X-User-Id': userId || '' }
-        });
+        const response = await fetch('/api/me', { credentials: 'include' });
+        let userId = null;
         let displayName = 'Joueur';
         if (response.ok) {
           const userData = await response.json();
+          userId = userData.id;
           displayName = userData.displayName || 'Joueur';
         }
         ws.send(JSON.stringify({ type: 'join_tournament', slot, userId, displayName }));
       };
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.type === 'update_slots') {
-          const userId = localStorage.getItem('userId');
+          // Récupérer l'utilisateur actuel
+          const userRes = await fetch('/api/me', { credentials: 'include' });
+          let currentUserId = null;
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            currentUserId = userData.id;
+          }
+          
           const userIds = data.userIds || [];
-          const userAlreadyJoined = userIds.includes(userId);
+          const userAlreadyJoined = currentUserId ? userIds.includes(currentUserId.toString()) : false;
           
           for (let i = 1; i <= 4; i++) {
             const slotDiv = document.getElementById(`slot-${i}`);
@@ -888,7 +1078,7 @@ async function renderFriendsList() {
   const container = document.getElementById('friends-list');
   if (!container) return;
   container.innerHTML = 'Chargement...';
-  const res = await fetch('/api/friends');
+  const res = await fetch('/api/friends', { credentials: 'include' });
   if (!res.ok) {
     container.innerHTML = 'Erreur lors du chargement des amis.';
     return;
@@ -911,7 +1101,7 @@ async function renderFriendsList() {
       e.stopPropagation();
       const id = (e.target as HTMLElement).getAttribute('data-id');
       if (id) {
-        await fetch(`/api/friends/${id}`, { method: 'DELETE' });
+        await fetch(`/api/friends/${id}`, { method: 'DELETE', credentials: 'include' });
         renderFriendsList();
       }
     });
@@ -923,7 +1113,9 @@ async function renderFriendsList() {
       if (id) {
         const friend = friends.find((f: any) => f.id == id);
         if (friend && friend.displayName) {
-          const res = await fetch(`/api/user/${encodeURIComponent(friend.displayName)}`);
+          const res = await fetch(`/api/user/${encodeURIComponent(friend.displayName)}`, { 
+            credentials: 'include' 
+          });
           if (res.ok) {
             const user = await res.json();
             showView('public-profile', true, user);
@@ -934,11 +1126,53 @@ async function renderFriendsList() {
   });
 }
 
+async function enable2FA() {
+  const r = await fetch('/api/2fa/enable', { method: 'POST', credentials: 'include' });
+  if (!r.ok) return alert('Failed to start 2FA');
+  const { qrDataUrl } = await r.json();
+  (document.getElementById('twofa-qr') as HTMLImageElement).src = qrDataUrl;
+}
+
+async function verify2FA(code: string) {
+  const r = await fetch('/api/2fa/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ code })
+  });
+  if (!r.ok) return alert('Invalid code');
+  alert('2FA enabled!');
+}
+
+async function exportMe() {
+  const r = await fetch('/api/me/export', { credentials: 'include' });
+  const data = await r.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-data.json';
+  a.click();
+}
+
+async function anonymizeMe() {
+  const r = await fetch('/api/me/anonymize', { method: 'POST', credentials: 'include' });
+  alert(r.ok ? 'Anonymized' : 'Failed');
+}
+
+async function deleteMe() {
+  if (!confirm('Are you sure? This will delete your account.')) return;
+  const r = await fetch('/api/me', { method: 'DELETE', credentials: 'include' });
+  alert(r.ok ? 'Deleted' : 'Failed');
+  // redirect to login / clear UI
+}
+
+
+
 async function renderFriendRequests() {
   const container = document.getElementById('friend-requests-list');
   if (!container) return;
   container.innerHTML = 'Chargement...';
-  const res = await fetch('/api/friends/requests');
+  const res = await fetch('/api/friends/requests', { credentials: 'include' });
   if (!res.ok) {
     container.innerHTML = 'Erreur lors du chargement des demandes.';
     return;
@@ -959,7 +1193,7 @@ async function renderFriendRequests() {
     btn.addEventListener('click', async (e) => {
       const id = (e.target as HTMLElement).getAttribute('data-id');
       if (id) {
-        await fetch(`/api/friends/${id}/accept`, { method: 'POST' });
+        await fetch(`/api/friends/${id}/accept`, { method: 'POST', credentials: 'include' });
         renderFriendRequests();
         renderFriendsList();
       }
@@ -971,7 +1205,10 @@ if (publicProfileSection) {
   publicProfileSection.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
     if (target && target.id === 'add-friend-btn' && target.dataset.userid) {
-      const res = await fetch(`/api/friends/${target.dataset.userid}`, { method: 'POST' });
+      const res = await fetch(`/api/friends/${target.dataset.userid}`, { 
+        method: 'POST', 
+        credentials: 'include' 
+      });
       if (res.ok) {
         alert('Ami ajouté !');
         if (!profileSection.classList.contains('hidden')) {
@@ -1015,12 +1252,7 @@ else if (location.pathname === '/profile') showView('profile', false);
 else showView('login', false);
 
 const userId = localStorage.getItem('userId');
-await fetch('/api/me', {
-  method: 'GET',
-  headers: {
-    'X-User-Id': userId ?? ''
-  }
-});
+await fetch('/api/me', { method: 'GET', credentials: 'include' });
 
 const canvashome = document.getElementById("home-canvas") as HTMLCanvasElement;
 const canHome = canvashome?.getContext("2d");

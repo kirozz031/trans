@@ -1,12 +1,21 @@
+import '@fastify/jwt';
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import multipart from '@fastify/multipart';
 import fs from 'fs';
 import path from 'path';
 import fastifyStatic from '@fastify/static';
-import Fastify, { FastifyRequest, FastifyReply } from 'fastify';
+// Use require to avoid TS confusion with default export typing
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Fastify = require('fastify');
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
+
+import securityPlugin from './security/security';
+import twofaPlugin from './security/twofa';
+import gdprPlugin from './security/gdpr';
+
 
 declare module '@fastify/session' {
   interface SessionData {
@@ -14,25 +23,6 @@ declare module '@fastify/session' {
   }
 }
 
-const fastify = Fastify();
-const prisma = new PrismaClient();
-
-fastify.register(fastifyStatic, {
-  root: path.join(__dirname, 'avatars'),
-  prefix: '/avatars/',
-});
-
-fastify.register(multipart, {
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10 Mo pour l'avatar (c'est beaucoup)
-  }
-});
-fastify.register(fastifyCookie);
-fastify.register(fastifySession, {
-  secret: 'secretsecretsecretsecretsecretsecret',
-  cookie: { secure: false, httpOnly: true, sameSite: 'lax' }, // secure: true en prod HTTPS
-  saveUninitialized: false
-});
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -40,59 +30,150 @@ declare module 'fastify' {
   }
 }
 
-fastify.addHook('preHandler', async (req: FastifyRequest, reply: FastifyReply) => {
-  let userId: number | undefined = undefined;
-  if ((req.session as any)?.userId)
-    userId = (req.session as any).userId;
-  else if (req.headers['x-user-id'])
-    userId = parseInt(req.headers['x-user-id'] as string, 10);
-  else if ((req.body as any)?.userId)
-    userId = parseInt((req.body as any).userId, 10);
-  (req as any).userId = userId;
+
+
+async function main() {
+  const app = Fastify();
+  const prisma = new PrismaClient();
+
+  await app.register(securityPlugin);
+  await app.register(twofaPlugin);
+  await app.register(gdprPlugin);
+
+
+
+
+app.register(fastifyStatic, {
+  root: path.join(__dirname, 'avatars'),
+  prefix: '/avatars/',
 });
 
-fastify.post('/api/register', async (req, reply) => {
+app.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10 Mo pour l'avatar (c'est beaucoup)
+  }
+});
+app.register(fastifyCookie);
+// app.register(fastifySession, {
+//   secret: 'secretsecretsecretsecretsecretsecret',
+//   cookie: { secure: false, httpOnly: true, sameSite: 'lax' }, // secure: true en prod HTTPS
+//   saveUninitialized: false
+// });
+
+// fastify.post('/api/register', async (req, reply) => {
+//   const { email, password, displayName } = req.body as any;
+//   const hash = await bcrypt.hash(password, 10);
+//   try {
+//     const user = await prisma.user.create({
+//       data: { email, password: hash, displayName }
+//     });
+//     reply.send({ id: user.id, email: user.email, displayName: user.displayName });
+//   } catch (e) {
+//     reply.status(400).send({ error: 'Email ou pseudo déjà utilisé.' });
+//   }
+// });
+
+
+app.post('/api/register', {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['email', 'password', 'displayName'],
+      properties: {
+        email: { type: 'string', format: 'email', maxLength: 255 },
+        password: { type: 'string', minLength: 8, maxLength: 128 },
+        displayName: { type: 'string', minLength: 2, maxLength: 32 }
+      }
+    }
+  }
+}, async (req: any, reply: any) => {
   const { email, password, displayName } = req.body as any;
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(password, 12);
   try {
-    const user = await prisma.user.create({
-      data: { email, password: hash, displayName }
-    });
+    const user = await prisma.user.create({ data: { email, password: hash, displayName } });
+    // do not auto-login, ask to login
     reply.send({ id: user.id, email: user.email, displayName: user.displayName });
   } catch (e) {
-    reply.status(400).send({ error: 'Email ou pseudo déjà utilisé.' });
+    reply.status(400).send({ error: 'Email or display name already used.' });
   }
 });
 
-fastify.post('/api/login', async (req, reply) => {
-  const { email, password } = req.body as any;
+
+// fastify.post('/api/login', async (req, reply) => {
+//   const { email, password } = req.body as any;
+//   const user = await prisma.user.findUnique({ where: { email } });
+//   if (!user || !(await bcrypt.compare(password, user.password)))
+//     return reply.status(401).send({ error: 'Email ou mot de passe invalide.' });
+//   (req.session as any).userId = user.id;
+//   reply.send({
+//     id: user.id,
+//     email: user.email,
+//     displayName: user.displayName,
+//     avatar: user.avatar ? user.avatar : '/avatars/default.png'
+//   });
+// });
+
+
+app.post('/api/login', {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: { type: 'string', format: 'email' },
+        password: { type: 'string' },
+        otp: { type: 'string', pattern: '^[0-9]{6}$' }
+      }
+    }
+  }
+}, async (req: any, reply: any) => {
+  const { email, password, otp } = req.body;
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.password)))
-    return reply.status(401).send({ error: 'Email ou mot de passe invalide.' });
-  (req.session as any).userId = user.id;
-  reply.send({
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    avatar: user.avatar ? user.avatar : '/avatars/default.png'
-  });
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return reply.code(401).send({ error: 'Invalid credentials' });
+  }
+
+  if (user.is2FAEnabled) {
+    if (!otp) return reply.code(206).send({ need2FA: true }); // ask for OTP
+    const { authenticator } = await import('otplib');
+    if (!authenticator.check(otp, user.totpSecret!)) {
+      return reply.code(401).send({ error: 'Invalid OTP' });
+    }
+  }
+
+  const token = app.jwt.sign({ id: user.id, email: user.email });
+  // Safer cookie (JS cannot read it). If you want localStorage instead, return {token}.
+  reply
+    .setCookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', path: '/' })
+    .send({ ok: true });
 });
 
-fastify.get('/api/me', async (req, reply) => {
-  const user = await prisma.user.findUnique({ where: { id: req.userId } });
-  if (!user) return reply.status(404).send({ error: 'Utilisateur non trouvé' });
-  reply.send({
-    email: user.email,
-    displayName: user.displayName,
-    avatar: user.avatar ? user.avatar : '/avatars/default.png'
+
+// fastify.get('/api/me', async (req, reply) => {
+//   const user = await prisma.user.findUnique({ where: { id: req.userId } });
+//   if (!user) return reply.status(404).send({ error: 'Utilisateur non trouvé' });
+//   reply.send({
+//     email: user.email,
+//     displayName: user.displayName,
+//     avatar: user.avatar ? user.avatar : '/avatars/default.png'
+//   });
+// });
+
+
+app.get('/api/me', { preHandler: (app as any).requireAuth }, async (req: any) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { id: true, email: true, displayName: true, avatar: true, is2FAEnabled: true }
   });
+  return user;
 });
 
-fastify.put('/api/me', async (req, reply) => {
+
+app.put('/api/me', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
   const { email, displayName } = req.body as any;
   try {
     const user = await prisma.user.update({
-      where: { id: req.userId },
+  where: { id: req.user.id },
       data: { email, displayName }
     });
     reply.send({ email: user.email, displayName: user.displayName });
@@ -101,18 +182,16 @@ fastify.put('/api/me', async (req, reply) => {
   }
 });
 
-fastify.post('/api/me/avatar', async (req, reply) => {
+app.post('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
   const MAX_SIZE = 50 * 1024; // 50kb
   const parts = req.parts ? req.parts() : null;
-  let userId = req.userId;
+  let userId = req.user.id;
   let filePart: any = null;
 
   if (parts) {
     for await (const part of parts) {
       if (part.type === 'file') {
         filePart = part;
-      } else if (part.type === 'field' && part.fieldname === 'userId' && !userId) {
-        userId = parseInt(part.value as string, 10);
       }
     }
   } else {
@@ -162,8 +241,8 @@ fastify.post('/api/me/avatar', async (req, reply) => {
   reply.send({ success: true, avatar: `/avatars/${fileName}` });
 });
 
-fastify.delete('/api/me/avatar', async (req, reply) => { //remettre avatar par defaut
-  const userId = req.userId;
+app.delete('/api/me/avatar', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //remettre avatar par defaut
+  const userId = req.user.id;
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (user?.avatar && user.avatar !== '/avatars/default.png') {
     const oldPath = path.join(__dirname, user.avatar);
@@ -176,10 +255,12 @@ fastify.delete('/api/me/avatar', async (req, reply) => { //remettre avatar par d
   reply.send({ success: true });
 });
 
-fastify.post('/api/logout', async (req, reply) => {
-  if (req.userId) onlineUsers.delete(req.userId);
-  req.session.destroy();
-  reply.send({ success: true });
+app.post('/api/logout', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
+  if (userId) onlineUsers.delete(userId);
+  reply
+    .clearCookie('token', { path: '/' })
+    .send({ success: true });
 });
 
 
@@ -187,9 +268,10 @@ const onlineUsers = new Map<number, number>();
 
 const ONLINE_TIMEOUT = 10_000; //10sec avant d'etre mis hors ligne
 
-fastify.post('/api/ping', async (req, reply) => { //ping pour le statut en ligne
-  if (req.userId) {
-    onlineUsers.set(req.userId, Date.now());
+app.post('/api/ping', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //ping pour le statut en ligne
+  const userId = req.user.id;
+  if (userId) {
+    onlineUsers.set(userId, Date.now());
     reply.send({ online: true });
   } else {
     reply.status(401).send({ error: 'Non authentifié.' });
@@ -201,7 +283,7 @@ function isUserOnline(userId: number): boolean {
   return !!last && Date.now() - last < ONLINE_TIMEOUT;
 }
 
-fastify.get('/api/user/:displayName', async (req, reply) => { //recherche avec pseudo
+app.get('/api/user/:displayName', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => { //recherche avec pseudo
   const { displayName } = req.params as { displayName: string };
   const user = await prisma.user.findUnique({ where: { displayName } });
   if (!user) return reply.status(404).send({ error: 'Utilisateur non trouvé' });
@@ -214,35 +296,38 @@ fastify.get('/api/user/:displayName', async (req, reply) => { //recherche avec p
   });
 });
 
-fastify.get('/api/friends', async (req, reply) => {
-  const userId = req.userId;
+app.get('/api/friends', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   if (!userId) return reply.status(401).send({ error: 'Non authentifié.' });
   const friends = await prisma.friend.findMany({
     where: { userId, status: 'ACCEPTED' },
     include: { friend: { select: { id: true, displayName: true, avatar: true, email: true } } },
   });
-  reply.send(friends.map(f => ({
+  reply.send(friends.map((f: any) => ({
     ...f.friend,
     online: isUserOnline(f.friend.id)
   })));
 });
 
-fastify.get('/api/friends/requests', async (req, reply) => {
-  const userId = req.userId;
+app.get('/api/friends/requests', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   if (!userId) return reply.status(401).send({ error: 'Non authentifié.' });
   const requests = await prisma.friend.findMany({
     where: { friendId: userId, status: 'PENDING' },
     include: { user: { select: { id: true, displayName: true, avatar: true, email: true } } },
   });
-  reply.send(requests.map(r => ({
-    ...r.user,
+  reply.send(requests.map((r: any) => ({
+    id: r.user.id,
+    displayName: r.user.displayName,
+    avatar: r.user.avatar,
+    email: r.user.email,
     online: isUserOnline(r.user.id),
     friendRequestId: r.id
   })));
 });
 
-fastify.post('/api/friends/:id', async (req, reply) => {
-  const userId = req.userId;
+app.post('/api/friends/:id', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   const friendId = parseInt((req.params as any).id, 10);
   if (!userId || !friendId) return reply.status(400).send({ error: 'Paramètres invalides.' });
   if (userId === friendId) return reply.status(400).send({ error: 'Impossible de s\'ajouter soi-même.' });
@@ -270,8 +355,8 @@ fastify.post('/api/friends/:id', async (req, reply) => {
   reply.send({ success: true });
 });
 
-fastify.post('/api/friends/:id/accept', async (req, reply) => {
-  const userId = req.userId;
+app.post('/api/friends/:id/accept', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   const requestId = parseInt((req.params as any).id, 10);
   if (!userId || !requestId) return reply.status(400).send({ error: 'Paramètres invalides.' });
 
@@ -291,8 +376,8 @@ fastify.post('/api/friends/:id/accept', async (req, reply) => {
   reply.send({ success: true });
 });
 
-fastify.delete('/api/friends/:id', async (req, reply) => {
-  const userId = req.userId;
+app.delete('/api/friends/:id', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   const friendId = parseInt((req.params as any).id, 10);
   if (!userId || !friendId) return reply.status(400).send({ error: 'Paramètres invalides.' });
 
@@ -308,7 +393,7 @@ fastify.delete('/api/friends/:id', async (req, reply) => {
 });
 
 // Endpoint pour sauvegarder un match
-fastify.post('/api/matches', async (req, reply) => {
+app.post('/api/matches', async (req: any, reply: any) => {
   const { player1Id, player2Id, player1Score, player2Score, matchType } = req.body as any;
   
   if (!player1Id || !player2Id || player1Score === undefined || player2Score === undefined) {
@@ -336,8 +421,8 @@ fastify.post('/api/matches', async (req, reply) => {
 });
 
 // Endpoint pour récupérer l'historique des matches d'un utilisateur
-fastify.get('/api/matches/history', async (req, reply) => {
-  const userId = req.userId;
+app.get('/api/matches/history', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const userId = req.user.id;
   if (!userId) {
     return reply.status(401).send({ error: 'Non authentifié' });
   }
@@ -363,7 +448,7 @@ fastify.get('/api/matches/history', async (req, reply) => {
       }
     });
 
-    const formattedMatches = matches.map(match => ({
+  const formattedMatches = matches.map((match: any) => ({
       id: match.id,
       player1: match.player1,
       player2: match.player2,
@@ -382,10 +467,15 @@ fastify.get('/api/matches/history', async (req, reply) => {
   }
 });
 
-fastify.listen({ port: 3000, host: '0.0.0.0' }, (err, address) => {
+app.listen({ port: 3000, host: '0.0.0.0' }, (err: any, address: any) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
   console.log(`Server listening at ${address}`);
 });
+
+};
+
+
+main();

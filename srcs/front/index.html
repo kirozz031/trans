@@ -13,7 +13,8 @@
         <h2 class="text-xl mb-4">Créer un compte</h2>
         <input class="border p-2 w-full mb-2" type="email" id="reg-email" placeholder="Email" required>
         <input class="border p-2 w-full mb-2" type="text" id="reg-displayName" placeholder="Pseudo" required>
-        <input class="border p-2 w-full mb-2" type="password" id="reg-password" minlength="4" placeholder="Mot de passe" required>
+  <input class="border p-2 w-full mb-1" type="password" id="reg-password" minlength="8" placeholder="Mot de passe (min 8 caractères)" required>
+  <small class="block text-gray-600 mb-2">Le mot de passe doit contenir au moins 8 caractères.</small>
         <label class="block mb-2">Avatar</label>
         <input class="border p-2 w-full mb-2" type="file" id="reg-avatar" accept="image/*">
         <button class="bg-green-500 text-white px-4 py-2 rounded w-full" type="submit">S'inscrire</button>
@@ -65,7 +66,7 @@
         <h1 class="text-4xl text-whiborder-white mb-4 z-0 text-white">Modes de jeux</h1>
         <div class="flex flex-col items-center z-10">
           <button id="play-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48">VS IA</button>
-          <button id="vs-player" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">VS JOUEUR</button>
+          <button id="vs-player" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">VS Joueur</button>
           <button id="tournois-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">Tournois</button>
         </div>
       </div>
