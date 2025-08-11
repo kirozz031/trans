@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Pong</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+<div id="c-page" class="relative w-screen h-screen flex justify-center bg-gray-800 items-center">
+  <div>
+    <form id="register-form" class="bg-white p-6 rounded shadow-md w-80 mb-4 hidden">
+        <h2 class="text-xl mb-4">Créer un compte</h2>
+        <input class="border p-2 w-full mb-2" type="email" id="reg-email" placeholder="Email" required>
+        <input class="border p-2 w-full mb-2" type="text" id="reg-displayName" placeholder="Pseudo" required>
+  <input class="border p-2 w-full mb-1" type="password" id="reg-password" minlength="8" placeholder="Mot de passe (min 8 caractères)" required>
+  <small class="block text-gray-600 mb-2">Le mot de passe doit contenir au moins 8 caractères.</small>
+        <label class="block mb-2">Avatar</label>
+        <input class="border p-2 w-full mb-2" type="file" id="reg-avatar" accept="image/*">
+        <button class="bg-green-500 text-white px-4 py-2 rounded w-full" type="submit">S'inscrire</button>
+    </form>
+    <form id="login-form" class="bg-white p-6 rounded shadow-md w-80">
+      <h2 class="text-xl mb-4">Pong game</h2>
+      <input class="border p-2 w-full mb-2" type="email" id="email" placeholder="Email" required>
+      <input class="border p-2 w-full mb-2" type="password" id="password" placeholder="Mot de passe" required>        
+      <button class="bg-blue-500 text-white px-4 py-2 rounded w-full" type="submit">Se connecter</button>
+      <button id="show-register" class="text-blue-500">Créer un compte</button>
+    </form>
+  </div>
+</div>
+<div id="home-section" class="flex w-screen h-screen bg-gray-900 hidden">
+  <div class="flex flex-col items-center w-28 h-screen bg-gray-800 border-r-2 border-white inset-y-0 my-auto pt-2">
+            <img src="../img/logoo.png" alt="logo du site" class="h-10 w-10 mb-6 mx-auto">
+            <nav class="flex flex-col space-y-8 w-full items-center">
+                <div class="item-center justify-center inset-y-0 my-auto">
+                    <button id="accueil" class="flex flex-col items-center text-white hover:text-black hover:bg-white rounded-lg p-3 w-20 transition font-bold text-lg z-10 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6 mb-1"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5 0a2 2 0 002-2V7a2 2 0 00-2-2h-3.5a2 2 0 00-2 2v1" /></svg>
+                        <span>Accueil</span>
+                    </button>
+                    <button id="go-game" class="flex flex-col items-center text-white hover:text-black hover:bg-white rounded-lg p-3 w-20 transition font-bold text-lg z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6 mb-1"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                        <span>Pong</span>
+                    </button>
+                </div>
+                <div class="fixed bottom-10 left-1.5">
+                    <button id="logout-btn" class="flex flex-col items-center text-white hover:text-black hover:bg-white rounded-lg p-3 w-20 transition font-bold text-lg mt-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8 mb-1"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" /></svg>
+                        <span>Déco</span>
+                    </button>
+                </div>
+            </nav> 
+    </div>
+    <div class="flex-1 flex flex-col">
+      <nav id="nav-bar" class="w-full flex items-center justify-between bg-gray-800 backdrop-blur-sm p-4 border-b-2 border-white">
+        <div class="flex-1 flex">
+          <input type="text" placeholder="Rechercher un ami..." class="w-64 px-3 py-2 border-white bg-gray-800 hover:bg-gray-900 text-white"/>
+        </div>
+        <div>
+          <button id="go-profile" class="flex items-center hover:underline gap-2 border-white text-white">
+            <span id="user-displayName"></span>
+            <img id="user-avatar" alt="user" class="w-10 h-10 border-2 border-solid border-white rounded-full object-cover">
+          </button>
+        </div>
+      </nav>
+      <div id="game-section" class="relative flex flex-col items-center justify-center h-screen bg-black hidden">
+        <h1 class="text-4xl text-whiborder-white mb-4 z-0 text-white">Modes de jeux</h1>
+        <div class="flex flex-col items-center z-10">
+          <button id="play-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48">VS IA</button>
+          <button id="vs-player" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">VS Joueur</button>
+          <button id="tournois-button" class="bg-black text-white rounded p-2 font-bold hover:bg-gray-900 border-2 border-solid border-white w-48 mt-4">Tournois</button>
+        </div>
+      </div>
+      <!-- Canvas du PONG --> 
+      <div id="pong-game" class="relative flex flex-col items-center justify-center h-screen hidden">
+          <canvas id="pong" width="800" height="400" class="hidden border-2 border-solid border-white z-10"></canvas>
+      </div>
+      <div id="winner-popup" class="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden z-30">
+        <div class="bg-white p-6 rounded shadow-md w-80 text-center">
+          <h2 class="text-2xl mb-4">Vous avez gagné !</h2>
+          <p class="text-lg mb-4">Score : <span id="winner-score"></span></p>
+          <button id="fermer" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Fermer</button>
+        </div>
+      </div>
+      <div id="loser-popup" class="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden z-30">
+        <div class="bg-white p-6 rounded shadow-md w-80 text-center">
+          <h2 class="text-2xl mb-4">Vous avez perdu !</h2>
+          <p class="text-lg mb-4">Score : <span id="loser-score"></span></p>
+          <button id="fermer-loser" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Fermer</button>
+        </div>
+      </div>
+        <!-- page d'accueil -->
+      <div id="page-accueil" class="relative flex flex-col items-center justify-center h-screen bg-black/60 backdrop-blur-sm hidden">
+        <h1 class="text-5xl text-whiborder-white mb-8 z-10 text-white"> bienvenue sur Pong <span id="user-name"></span> </h1>
+        <canvas id="home-canvas" class="h-52 w-96 border-2 border-solid border-white z-10"></canvas>
+      </div>
+        <div id="user-menu" class="absolute right-4 top-20 bg-black rounded-lg border-2 border-solid border-white p-4 z-50 hidden">
+          <ul class="text-white">
+            <li class="mb-2"><a href="#" id="profile-link" class="hover:text-gray-600">Mon profil</a></li>
+            <li class="mb-2"><a href="#" id="settings-link" class="hover:text-gray-600">Paramètres</a></li>
+          </ul>
+        </div>
+        <!-- Overlay flou pour le profil -->
+        <div id="blur-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
+        <div id="blurm-bg" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"></div>
+        <div id="profile-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
+          <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-3xl border border-gray-700">
+            <div class="flex items-center mb-4">
+              <h2 class="text-xl text-white font-bold mr-6">Mon profil</h2>
+              <button id="profile-tab-info" class="px-4 py-2 text-white bg-blue-600 rounded font-bold mr-2">Profil</button>
+              <button id="profile-tab-history" class="px-4 py-2 text-white bg-gray-800 rounded font-bold">Historique</button>
+            </div>
+            <div id="profile-info-panel" class="mt-4">
+              <div class="flex flex-col md:flex-row gap-6">
+                <div class="md:w-1/3 w-full">
+                  <img id="profile-avatar-img" src="/avatars/default.png" alt="Avatar" class="w-24 h-24 rounded-full mb-4 mx-auto border-4 border-gray-700">
+                  <form id="profile-form">
+                    <label class="block mb-2 text-gray-300">Email</label>
+                    <input class="border p-2 w-full mb-2 bg-gray-800 text-white border-gray-700" type="email" id="profile-email" required>
+                    <label class="block mb-2 text-gray-300">Pseudo</label>
+                    <input class="border p-2 w-full mb-2 bg-gray-800 text-white border-gray-700" type="text" id="profile-displayName" required>
+                    <label class="block mb-2 text-gray-300">Avatar</label>
+                    <input class="border p-2 w-full mb-2 bg-gray-800 text-white border-gray-700" type="file" id="profile-avatar" accept="image/*">
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded w-full" type="submit">Mettre à jour</button>
+                  </form>
+                  <button id="back-home-profile" class="mt-4 text-blue-400 w-full">fermer</button>
+                </div>
+                <div class="md:w-2/3 w-full">
+                  <hr class="my-4 md:hidden border-gray-700">
+                  <div>
+                    <h3 class="text-lg mb-2 text-white">Mes amis</h3>
+                    <div id="friends-list" class="mb-4"></div>
+                    <h3 class="text-lg mb-2 text-white">Rechercher un utilisateur</h3>
+                    <input class="border p-2 w-full mb-2 bg-gray-800 text-w.hite border-gray-700" type="text" id="search-user-input" placeholder="Pseudo à rechercher">
+                    <button id="search-user-btn" class="bg-gray-700 text-white px-4 py-2 rounded w-full mb-2">Rechercher</button>
+                    <div id="search-user-result" class="mt-2"></div>
+                    <h3 class="text-lg mb-2 text-white">Demandes d'amis reçues</h3>
+                    <div id="friend-requests-list" class="mb-4"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="profile-history-panel" class="mt-4 hidden">
+              <h3 class="text-lg mb-2 text-white">Historique de partie</h3>
+              <div id="profile-history-list" class="mb-4 text-white"></div>
+              <h3 class="text-lg mb-2 text-white">Statistiques</h3>
+              <div id="profile-stats" class="mb-4 text-white"></div>
+            </div>
+          </div>
+        </div>
+        <div id="public-profile-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
+          <div class="bg-gray-900 p-6 rounded shadow-md w-80">
+          <h2 class="text-xl text-white mb-4">Profil utilisateur</h2>
+          <img id="public-profile-avatar-img" src="/avatars/default.png" alt="Avatar" class="w-20 h-20 rounded-full mb-2">
+          <div class="mb-2 text-white"><b>Email :</b> <span id="public-profile-email"></span></div>
+          <div class="mb-2 text-white"><b>Pseudo :</b> <span id="public-profile-displayName"></span></div>
+          <button id="add-friend-btn" class="mt-2 bg-green-500 text-white px-4 py-2 rounded w-full hidden">Ajouter aux amis</button>
+          <button id="back-profile-btn" class="mt-4 text-blue-500">Retour à mon profil</button>
+          </div>
+        </div>
+    </div>
+</div>
+<div id="tournament-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
+  <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-2xl border border-gray-700 flex flex-col items-center">
+    <h2 class="text-2xl text-white font-bold mb-6">Tournoi 4 joueurs</h2>
+    <div id="tournament-bracket" class="flex justify-between w-full mb-6">
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-1">Slot 1</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="1">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-2">Slot 2</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="2">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-3">Slot 3</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="3">Rejoindre</button>
+      </div>
+      <div class="flex flex-col items-center">
+        <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-4">Slot 4</div>
+        <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="4">Rejoindre</button>
+      </div>
+    </div>
+    <button id="close-tournament-btn" class="mt-4 text-blue-400">Fermer</button>
+  </div>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>

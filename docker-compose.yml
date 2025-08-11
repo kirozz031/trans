@@ -1,0 +1,38 @@
+services:
+  nginx:
+    build: 
+      context: ./srcs
+      dockerfile: ./nginx/Dockerfile
+    container_name: nginx
+    ports:
+      - "8443:443"
+  backend:
+    build:
+      context: ./srcs/back
+    container_name: backend
+    ports:
+      - "3000:3000"
+    # volumes:
+    #   - ./srcs/back:/app
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+
+  websocket-pong:
+    build:
+      context: .
+      dockerfile: Dockerfile.ws-pong
+    container_name: websocket-pong
+    ports:
+      - "8081:8081"
+    working_dir: /app
+    command: ["node", "ws-pong-server.js"]
+
+  websocket-tournament:
+    build:
+      context: .
+      dockerfile: Dockerfile.ws-tournament
+    container_name: websocket-tournament
+    ports:
+      - "8082:8082"
+    working_dir: /app
+    command: ["node", "ws-tournament-server.js"]

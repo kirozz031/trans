@@ -1,0 +1,6 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY ws-tournament-server.js ./
+RUN npm install ws
+EXPOSE 8082
+CMD ["node", "ws-tournament-server.js"]

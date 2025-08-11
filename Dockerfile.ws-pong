@@ -1,0 +1,6 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY ws-pong-server.js ./
+RUN npm install ws
+EXPOSE 8081
+CMD ["node", "ws-pong-server.js"]
