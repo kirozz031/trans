@@ -467,6 +467,85 @@ app.get('/api/matches/history', { preHandler: (app as any).requireAuth }, async 
   }
 });
 
+// Endpoint pour récupérer l'historique des matches d'un utilisateur spécifique par ID
+app.get('/api/matches/history/:userId', { preHandler: (app as any).requireAuth }, async (req: any, reply: any) => {
+  const targetUserId = parseInt((req.params as any).userId, 10);
+  const currentUserId = req.user.id;
+  
+  if (!targetUserId || !currentUserId) {
+    return reply.status(400).send({ error: 'Paramètres invalides' });
+  }
+
+  try {
+    // Vérifier si l'utilisateur cible existe
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, displayName: true }
+    });
+
+    if (!targetUser) {
+      return reply.status(404).send({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier si l'utilisateur actuel peut voir l'historique (soit c'est lui-même, soit ils sont amis)
+    const isSelf = currentUserId === targetUserId;
+    let isFriend = false;
+
+    if (!isSelf) {
+      const friendship = await prisma.friend.findFirst({
+        where: {
+          OR: [
+            { userId: currentUserId, friendId: targetUserId, status: 'ACCEPTED' },
+            { userId: targetUserId, friendId: currentUserId, status: 'ACCEPTED' }
+          ]
+        }
+      });
+      isFriend = !!friendship;
+    }
+
+    if (!isSelf && !isFriend) {
+      return reply.status(403).send({ error: 'Vous n\'êtes pas autorisé à voir l\'historique de cet utilisateur' });
+    }
+
+    const matches = await prisma.match.findMany({
+      where: {
+        OR: [
+          { player1Id: targetUserId },
+          { player2Id: targetUserId }
+        ]
+      },
+      include: {
+        player1: {
+          select: { id: true, displayName: true, avatar: true }
+        },
+        player2: {
+          select: { id: true, displayName: true, avatar: true }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    const formattedMatches = matches.map((match: any) => ({
+      id: match.id,
+      player1: match.player1,
+      player2: match.player2,
+      player1Score: match.player1Score,
+      player2Score: match.player2Score,
+      winnerId: match.winnerId,
+      matchType: match.matchType,
+      createdAt: match.createdAt,
+      isWinner: match.winnerId === targetUserId
+    }));
+
+    reply.send(formattedMatches);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'historique:', error);
+    reply.status(500).send({ error: 'Erreur serveur' });
+  }
+});
+
 app.listen({ port: 3000, host: '0.0.0.0' }, (err: any, address: any) => {
   if (err) {
     console.error(err);
