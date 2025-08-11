@@ -1,2 +1,0 @@
-POUR 2FA
-Changer l'id du user dans enable_2fa.php, puis aller sur http:...enable_2fa.php, scan qrcode et logiquement c'est good
