@@ -5,7 +5,6 @@ let slots = [null, null, null, null];
 let clients = [null, null, null, null];
 let winners = [];
 
-// Fonction pour sauvegarder un match dans la base de données
 async function saveMatch(player1Id, player2Id, player1Score, player2Score, matchType) {
   try {
     const response = await fetch('http://backend:3000/api/matches', {
@@ -96,7 +95,6 @@ function createPongRoom(playerA, playerB, matchId) {
   }
 
   async function loop() {
-    // Vérifier si le match est déjà terminé
     if (gameEnded) return;
     
     if (!playing) {

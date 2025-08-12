@@ -127,12 +127,25 @@ function startGameLoop(room) {
   const width = 800, height = 400, paddleH = 80, paddleW = 10;
   let gameEnded = false;
   let matchSaved = false;
+  let playing = true; // Ajout de cette variable pour contrôler la pause
   
   async function loop() {
     if (gameEnded) return;
     
     let play = room.players;
     let s = room.state;
+    
+    // Si le jeu n'est pas en cours (pause après but), on continue d'envoyer l'état sans bouger la balle
+    if (!playing) {
+      room.players.forEach(p => {
+        if (p.readyState === WebSocket.OPEN) {
+          p.send(JSON.stringify({ type: 'game_state', state: s }));
+        }
+      });
+      setTimeout(() => loop(), 1000/60);
+      return;
+    }
+    
     s.ball.x += s.ball.vx;
     s.ball.y += s.ball.vy;
 
@@ -175,8 +188,9 @@ function startGameLoop(room) {
       s.ball.vy *= 1.05;
     }
 
-    if (s.ball.x < 0) { s.score2++; resetBall(s); }
-    if (s.ball.x > width) { s.score1++; resetBall(s); }
+    let goal = false;
+    if (s.ball.x < 0) { s.score2++; goal = true; }
+    if (s.ball.x > width) { s.score1++; goal = true; }
 
     s.ball.vx = Math.max(-12, Math.min(12, s.ball.vx));
     s.ball.vy = Math.max(-10, Math.min(10, s.ball.vy));
@@ -186,6 +200,10 @@ function startGameLoop(room) {
         p.send(JSON.stringify({ type: 'game_state', state: s }));
       }
     });
+
+    if (goal) {
+      resetBall(s, 2000); // 2s d'attente après un but
+    }
 
     if (s.score1 >= 5 || s.score2 >= 5) {
       gameEnded = true;
@@ -224,14 +242,20 @@ function startGameLoop(room) {
       setTimeout(() => loop(), 1000/60);
     }
   }
+  
+  // Fonction pour réinitialiser la balle avec un délai
+  function resetBall(s, delay = 2000) {
+    playing = false;
+    setTimeout(() => {
+      s.ball.x = width/2;
+      s.ball.y = height/2;
+      s.ball.vx = (Math.random() > 0.5 ? 4 : -4);
+      s.ball.vy = (Math.random() > 0.5 ? 3 : -3);
+      playing = true;
+    }, delay);
+  }
+  
   loop();
-}
-
-function resetBall(s) {
-  s.ball.x = 300;
-  s.ball.y = 200;
-  s.ball.vx = (Math.random() > 0.5 ? 4 : -4);
-  s.ball.vy = (Math.random() > 0.5 ? 3 : -3);
 }
 
 console.log('WebSocket Pong server running on ws://localhost:8081');

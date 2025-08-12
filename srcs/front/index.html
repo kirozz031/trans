@@ -70,7 +70,7 @@
                 <div class="fixed bottom-10 left-1.5">
                     <button id="logout-btn" class="flex flex-col items-center text-white hover:text-black hover:bg-white rounded-lg p-3 w-20 transition font-bold text-lg mt-4">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8 mb-1"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" /></svg>
-                        <span>Déco</span>
+                        <span>Déconnexion</span>
                     </button>
                 </div>
             </nav> 
@@ -126,7 +126,7 @@
       </div>
         <!-- page d'accueil -->
       <div id="page-accueil" class="relative flex flex-col items-center justify-center h-screen bg-black/60 backdrop-blur-sm hidden">
-        <h1 class="text-5xl text-whiborder-white mb-8 z-10 text-white"> bienvenue sur Pong <span id="user-name"></span> </h1>
+        <h1 class="text-5xl text-whiborder-white mb-8 z-10 text-white"> Bienvenue sur Pong <span id="user-name"></span> </h1>
         <canvas id="home-canvas" class="h-52 w-96 border-2 border-solid border-white z-10"></canvas>
       </div>
         <div id="user-menu" class="absolute right-4 top-20 bg-black rounded-lg border-2 border-solid border-white p-4 z-50 hidden">
@@ -162,7 +162,7 @@
                     <input class="border p-2 w-full mb-2 bg-gray-800 text-white border-gray-700" type="file" id="profile-avatar" accept="image/*">
                     <button class="bg-blue-500 text-white px-4 py-2 rounded w-full" type="submit">Mettre à jour</button>
                   </form>
-                  <button id="back-home-profile" class="mt-4 text-blue-400 w-full">fermer</button>
+                  <button id="back-home-profile" class="mt-4 text-blue-400 w-full">Fermer</button>
                 </div>
                 <div class="md:w-2/3 w-full">
                   <hr class="my-4 md:hidden border-gray-700">
@@ -222,19 +222,19 @@
           <h2 class="text-2xl text-white font-bold mb-6">Tournoi 4 joueurs</h2>
           <div id="tournament-bracket" class="flex justify-between w-full max-w-4xl mb-6">
             <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-1">Slot 1</div>
+              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-1">Joueur 1</div>
               <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="1">Rejoindre</button>
             </div>
             <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-2">Slot 2</div>
+              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-2">Joueur 2</div>
               <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="2">Rejoindre</button>
             </div>
             <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-3">Slot 3</div>
+              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-3">Joueur 3</div>
               <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="3">Rejoindre</button>
             </div>
             <div class="flex flex-col items-center">
-              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-4">Slot 4</div>
+              <div class="w-32 h-16 bg-gray-800 rounded flex items-center justify-center text-white mb-2" id="slot-4">Joueur 4</div>
               <button class="join-tournament-btn bg-blue-500 text-white px-4 py-2 rounded" data-slot="4">Rejoindre</button>
             </div>
           </div>

@@ -4,6 +4,7 @@ BACK_DIR=srcs/back
 .PHONY: all front back docker build up clean re
 
 all: front back ws-pong docker up
+
 ws-pong:
 	docker compose build websocket-pong
 

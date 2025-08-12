@@ -37,6 +37,7 @@ const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElem
 const localGameBtn = document.getElementById('local-game-button') as HTMLButtonElement | null;
 
 let pingInterval: number | undefined;
+let currentPublicUserId: number | null = null; // Variable globale pour stocker l'ID de l'utilisateur public
 
 pingInterval = window.setInterval(async () => {
   try {
@@ -282,14 +283,14 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
           function onKey(e: KeyboardEvent) {
             if (!playernumber) return;
             let changed = false;
-            const paddleSpeed = 18; // Vitesse augmentée des paddles
+            const paddleSpeed = 18;
             if (playernumber === 1) {
-              if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'W') { paddleY -= paddleSpeed; changed = true; }
-              if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += paddleSpeed; changed = true; }
-            } else if (playernumber === 2) {
-              if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'W') { paddleY -= paddleSpeed; changed = true; }
-              if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += paddleSpeed; changed = true; }
-            }
+              if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
+              } else if (playernumber === 2) {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
+              }
             paddleY = Math.max(0, Math.min(canvas.height-paddleH, paddleY));
             if (changed) {
               ws.send(JSON.stringify({ type: 'paddle_move', y: paddleY }));
@@ -300,7 +301,6 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       });
     });
 
-    // Ajouter le gestionnaire pour le jeu local
     localGameBtn?.addEventListener('click', () => {
       canvas.classList.add('hidden');
       gameSection.classList.add('hidden');
@@ -314,8 +314,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         console.error('Failed to get canvas context');
         return;
       }
-      
-      // Bouton pour commencer le jeu local
+
       const startLocalGameBtn = document.createElement('button');
       startLocalGameBtn.textContent = 'Commencer le jeu local';
       startLocalGameBtn.classList.add(
@@ -346,7 +345,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
           } else if (data.type === 'game_over') {
             if (finished) return;
             finished = true;
-            alert(`Fin de partie ! Score final: ${data.score1} - ${data.score2}. Gagnant: Joueur ${data.winner}`);
+            alert(`Fin de partie ! Score final: ${data.score1} - ${data.score2}. Gagnant: ${data.winner}`);
             showView('game');
           }
         };
@@ -359,7 +358,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
           let paddle2Y = 150;
           const paddleH = 80;
           const paddleW = 10;
-          const paddleSpeed = 18; // Vitesse augmentée des paddles
+          const paddleSpeed = 18;
           const height = 400;
           const width = 800;
           
@@ -384,11 +383,10 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
             ctx.font = '32px Arial';
             ctx.fillText(gameState.score1, canvas.width/2-50, 40);
             ctx.fillText(gameState.score2, canvas.width/2+30, 40);
-            
-            // Afficher les contrôles
+
             ctx.font = '14px Arial';
-            ctx.fillText('Joueur 1: W/S', 20, height - 20);
-            ctx.fillText('Joueur 2: ↑/↓', width - 120, height - 20);
+            // ctx.fillText('Joueur 1: W/S', 20, height - 20);
+            // ctx.fillText('Joueur 2: ↑/↓', width - 120, height - 20);
           }
           
           function gameLoop() {
@@ -401,7 +399,6 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
             let changed1 = false;
             let changed2 = false;
             
-            // Contrôles pour joueur 1 (WASD)
             if (e.key === 'w' || e.key === 'W') { 
               paddle1Y -= paddleSpeed; 
               changed1 = true; 
@@ -410,8 +407,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
               paddle1Y += paddleSpeed; 
               changed1 = true; 
             }
-            
-            // Contrôles pour joueur 2 (flèches directionnelles)
+
             if (e.key === 'ArrowUp') { 
               paddle2Y -= paddleSpeed; 
               changed2 = true; 
@@ -420,12 +416,10 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
               paddle2Y += paddleSpeed; 
               changed2 = true; 
             }
-            
-            // Limiter les paddles dans l'écran
+
             paddle1Y = Math.max(0, Math.min(canvas.height - paddleH, paddle1Y));
             paddle2Y = Math.max(0, Math.min(canvas.height - paddleH, paddle2Y));
-            
-            // Envoyer les mises à jour au serveur
+
             if (changed1) {
               ws.send(JSON.stringify({ type: 'paddle_move', player: 1, y: paddle1Y }));
             }
@@ -457,17 +451,16 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       renderFriendsList();
       renderFriendRequests();
       addLogoutButton();
-      // Charger l'historique par défaut si l'onglet historique est actif
       const historyPanel = document.getElementById('profile-history-panel');
       if (historyPanel && !historyPanel.classList.contains('hidden')) {
         renderMatchHistory();
       }
-      // Assurer que l'historique soit disponible même si ce n'est pas l'onglet actif
       setTimeout(() => {
         renderMatchHistory();
       }, 100);
     });
   } else if (view === 'public-profile' && publicUser) {
+    currentPublicUserId = publicUser.id; // Stocker l'ID pour utilisation ultérieure
     homeSection.classList.remove('hidden');
     bg_blur?.classList.remove('hidden');
     if (publicProfileSection) publicProfileSection.classList.remove('hidden');
@@ -475,14 +468,12 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     if (publicProfileEmail) publicProfileEmail.textContent = publicUser.email;
     if (publicProfileDisplayName) publicProfileDisplayName.textContent = publicUser.displayName;
 
-    // Réinitialiser les onglets du profil public
     const publicTabInfo = document.getElementById('public-profile-tab-info');
     const publicTabHistory = document.getElementById('public-profile-tab-history');
     const publicInfoPanel = document.getElementById('public-profile-info-panel');
     const publicHistoryPanel = document.getElementById('public-profile-history-panel');
     
     if (publicTabInfo && publicTabHistory && publicInfoPanel && publicHistoryPanel) {
-      // Afficher l'onglet profil par défaut
       publicTabInfo.classList.add('bg-blue-600');
       publicTabHistory.classList.remove('bg-blue-600');
       publicTabHistory.classList.add('bg-gray-800');
@@ -512,15 +503,15 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
     statusDot.style.backgroundColor = publicUser.online ? '#22c55e' : '#ef4444';
     statusText.textContent = publicUser.online ? 'en ligne' : 'hors ligne';
 
-    // Charger les statistiques du profil public
     renderPublicProfileStats(publicUser.id);
+    // Charger l'historique dès l'affichage du profil public
+    renderPublicMatchHistory(publicUser.id);
 
     fetch('/api/me', { credentials: 'include' })
       .then(async (res) => (res.ok ? res.json() : null))
       .then(async me => {
         if (addFriendBtn) {
           if (me && me.displayName && publicUser.displayName && me.displayName !== publicUser.displayName) {
-            // Vérifier si l'utilisateur est déjà ami
             const friendsRes = await fetch('/api/friends', { credentials: 'include' });
             if (friendsRes.ok) {
               const friends = await friendsRes.json();
@@ -544,6 +535,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         }
       });
   } else {
+    currentPublicUserId = null; // Réinitialiser l'ID quand on quitte le profil public
     if (addFriendBtn) {
       addFriendBtn.classList.add('hidden');
       addFriendBtn.removeAttribute('data-userid');
@@ -662,7 +654,6 @@ loginForm.addEventListener('submit', async (e) => {
     if (meRes.ok) {
       const me = await meRes.json();
       localStorage.setItem('userId', me.id);
-      // Vider le cache de l'historique en forçant un rechargement
       console.log('Connexion réussie - l\'historique sera rechargé automatiquement');
     }
   } catch {}
@@ -820,7 +811,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Gestionnaires pour les onglets du profil public
   const publicTabInfo = document.getElementById('public-profile-tab-info');
   const publicTabHistory = document.getElementById('public-profile-tab-history');
   const publicInfoPanel = document.getElementById('public-profile-info-panel');
@@ -843,16 +833,10 @@ document.addEventListener('DOMContentLoaded', () => {
       publicTabInfo.classList.add('bg-gray-800');
       publicInfoPanel.classList.add('hidden');
       publicHistoryPanel.classList.remove('hidden');
-      
-      // Récupérer l'ID de l'utilisateur affiché
-      const displayNameElement = document.getElementById('public-profile-displayName');
-      if (displayNameElement && displayNameElement.textContent) {
-        // On peut récupérer l'ID depuis l'attribut data ou faire une recherche
-        const addFriendButton = document.getElementById('add-friend-btn');
-        const userId = addFriendButton?.getAttribute('data-userid');
-        if (userId) {
-          renderPublicMatchHistory(parseInt(userId));
-        }
+
+      // Utiliser la variable globale pour charger l'historique
+      if (currentPublicUserId) {
+        renderPublicMatchHistory(currentPublicUserId);
       }
     });
   }
@@ -912,7 +896,7 @@ async function renderMatchHistory() {
         <div class="bg-gray-800 p-3 rounded mb-2">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center">
-              <span class="font-semibold">vs ${opponent.displayName}</span>
+              <span class="font-semibold">vs ${opponent.displayName}    </span>
               <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
             </div>
             <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
@@ -1040,11 +1024,17 @@ async function renderPublicProfileStats(userId: number) {
 }
 
 async function renderPublicMatchHistory(userId: number) {
+  console.log('renderPublicMatchHistory called with userId:', userId);
   const historyList = document.getElementById('public-profile-history-list');
-  if (!historyList) return;
+  if (!historyList) {
+    console.error('Element public-profile-history-list not found');
+    return;
+  }
 
   try {
+    console.log('Fetching public match history for user:', userId);
     const res = await fetch(`/api/matches/history/${userId}`, { credentials: 'include' });
+    console.log('Response status:', res.status);
     
     if (!res.ok) {
       if (res.status === 403) {
@@ -1056,6 +1046,7 @@ async function renderPublicMatchHistory(userId: number) {
     }
 
     const matches = await res.json();
+    console.log('Matches data:', matches);
     
     if (matches.length === 0) {
       historyList.textContent = 'Aucune partie jouée pour le moment.';
@@ -1081,8 +1072,8 @@ async function renderPublicMatchHistory(userId: number) {
         <div class="bg-gray-800 p-3 rounded mb-2">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center">
+              <span class="font-semibold">vs ${opponent.displayName}    </span>
               <img src="${opponent.avatar || '/avatars/default.png'}" class="w-8 h-8 rounded-full mr-2" alt="Avatar">
-              <span class="font-semibold">vs ${opponent.displayName}</span>
             </div>
             <div class="text-lg font-bold ${isWinner ? 'text-green-400' : 'text-red-400'}">
               ${isWinner ? 'VICTOIRE' : 'DÉFAITE'}
@@ -1098,6 +1089,8 @@ async function renderPublicMatchHistory(userId: number) {
         </div>
       `;
     }).join('');
+
+    console.log('HTML content set to historyList');
 
   } catch (error) {
     console.error('Erreur lors du chargement de l\'historique:', error);
@@ -1283,10 +1276,10 @@ if (tournamentSection) {
           if (!playernumber) return;
           let changed = false;
           if (playernumber === 1) {
-            if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
           } else if (playernumber === 2) {
-            if (e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') { paddleY -= 10; changed = true; }
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { paddleY -= 10; changed = true; }
             if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { paddleY += 10; changed = true; }
           }
           paddleY = Math.max(0, Math.min(canvas.height-paddleH, paddleY));
@@ -1440,7 +1433,6 @@ if (publicProfileSection) {
       });
       if (res.ok) {
         alert('Ami ajouté !');
-        // Cacher le bouton après ajout réussi
         target.classList.add('hidden');
         target.removeAttribute('data-userid');
         if (!profileSection.classList.contains('hidden')) {
@@ -1466,7 +1458,6 @@ function addLogoutButton() {
 
   document.querySelectorAll('#logout-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
-      // Nettoyer le localStorage et les éventuels caches
       localStorage.clear();
       await fetch('/api/logout', { method: 'POST', credentials: 'include' });
       showView('login');
