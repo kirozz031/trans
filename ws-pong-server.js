@@ -42,7 +42,6 @@ wss.on('connection', ws => {
     try { data = JSON.parse(msg); } catch { return; }
     
     if (data.type === 'join_local') {
-      // Mode local : un seul joueur contrôle les deux paddles
       const width = 800, height = 400;
       const room = {
         players: [ws],
@@ -55,7 +54,8 @@ wss.on('connection', ws => {
         },
         width,
         height,
-        isLocal: true
+        isLocal: true,
+        gameEnded: false
       };
       ws.room = room;
       rooms.push(room);
@@ -79,7 +79,8 @@ wss.on('connection', ws => {
           },
           width,
           height,
-          isLocal: false
+          isLocal: false,
+          gameEnded: false
         };
         waiting.playernumber = 1;
         ws.playernumber = 2;
@@ -99,11 +100,9 @@ wss.on('connection', ws => {
     }
     if (data.type === 'paddle_move' && ws.room) {
       if (ws.room.isLocal) {
-        // Mode local : mise à jour des deux paddles
         if (data.player === 1) ws.room.state.paddle1.y = data.y;
         if (data.player === 2) ws.room.state.paddle2.y = data.y;
       } else {
-        // Mode en ligne : mise à jour selon le numéro du joueur
         if (ws.playernumber === 1) ws.room.state.paddle1.y = data.y;
         if (ws.playernumber === 2) ws.room.state.paddle2.y = data.y;
       }
@@ -113,11 +112,14 @@ wss.on('connection', ws => {
   ws.on('close', () => {
     if (waiting === ws) waiting = null;
     if (ws.room) {
-      ws.room.players.forEach(p => {
-        if (p !== ws && p.readyState === WebSocket.OPEN) {
-          p.send(JSON.stringify({ type: 'opponent_left' }));
-        }
-      });
+      // Ne pas envoyer le message "opponent_left" si la partie est déjà terminée
+      if (!ws.room.gameEnded) {
+        ws.room.players.forEach(p => {
+          if (p !== ws && p.readyState === WebSocket.OPEN) {
+            p.send(JSON.stringify({ type: 'opponent_left' }));
+          }
+        });
+      }
       rooms = rooms.filter(r => r !== ws.room);
     }
   });
@@ -127,15 +129,14 @@ function startGameLoop(room) {
   const width = 800, height = 400, paddleH = 80, paddleW = 10;
   let gameEnded = false;
   let matchSaved = false;
-  let playing = true; // Ajout de cette variable pour contrôler la pause
-  
+  let playing = true;
+
   async function loop() {
     if (gameEnded) return;
-    
+
     let play = room.players;
     let s = room.state;
-    
-    // Si le jeu n'est pas en cours (pause après but), on continue d'envoyer l'état sans bouger la balle
+
     if (!playing) {
       room.players.forEach(p => {
         if (p.readyState === WebSocket.OPEN) {
@@ -168,7 +169,6 @@ function startGameLoop(room) {
       s.ball.vx *= -1;
       let hitPos = (s.ball.y - s.paddle1.y - paddleH/2) / (paddleH/2);
       s.ball.vy += hitPos * 2;
-      // Augmenter la vitesse de la balle à chaque rebond
       s.ball.vx *= 1.05;
       s.ball.vy *= 1.05;
     }
@@ -183,7 +183,6 @@ function startGameLoop(room) {
       s.ball.vx *= -1;
       let hitPos = (s.ball.y - s.paddle2.y - paddleH/2) / (paddleH/2);
       s.ball.vy += hitPos * 2;
-      // Augmenter la vitesse de la balle à chaque rebond
       s.ball.vx *= 1.05;
       s.ball.vy *= 1.05;
     }
@@ -202,14 +201,14 @@ function startGameLoop(room) {
     });
 
     if (goal) {
-      resetBall(s, 2000); // 2s d'attente après un but
+      resetBall(s, 2000);
     }
 
     if (s.score1 >= 5 || s.score2 >= 5) {
       gameEnded = true;
-      
+      room.gameEnded = true;
+
       if (room.isLocal) {
-        // Mode local : juste informer de la fin de partie
         room.players[0].send(JSON.stringify({ 
           type: 'game_over', 
           score1: s.score1, 
@@ -217,7 +216,6 @@ function startGameLoop(room) {
           winner: s.score1 >= 5 ? 1 : 2
         }));
       } else {
-        // Mode en ligne : logique existante
         let joueur1 = play[0];
         let joueur2 = play[1];
         
@@ -225,7 +223,7 @@ function startGameLoop(room) {
           matchSaved = true;
           await saveMatch(joueur1.userId, joueur2.userId, s.score1, s.score2, 'NORMAL');
         }
-        
+
         if (s.score1 >= 5) {
           joueur1.send(JSON.stringify({ type: 'winner', score1 : s.score1, score2: s.score2, playernumber: 1}));
           joueur2.send(JSON.stringify({type: 'loser', score1: s.score1, score2: s.score2, playernumber: 2}));
@@ -242,8 +240,7 @@ function startGameLoop(room) {
       setTimeout(() => loop(), 1000/60);
     }
   }
-  
-  // Fonction pour réinitialiser la balle avec un délai
+
   function resetBall(s, delay = 2000) {
     playing = false;
     setTimeout(() => {

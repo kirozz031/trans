@@ -122,8 +122,13 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         console.error('Failed to get canvas context');
         return;
       }
-      // ajout d'un boutton pour commencer le matchmaking
       let blurm_bg = document.getElementById('blurm-bg') as HTMLDivElement;
+
+      if (pongpage) {
+        const existingButtons = pongpage.querySelectorAll('button');
+        existingButtons.forEach(btn => btn.remove());
+      }
+
       const startMatchmakingBtn = document.createElement('button');
       startMatchmakingBtn.textContent = 'Commencer le matchmaking';
       startMatchmakingBtn.classList.add(
@@ -313,6 +318,12 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
       if (!ctx) {
         console.error('Failed to get canvas context');
         return;
+      }
+
+      // Nettoyer les boutons existants avant d'ajouter le nouveau
+      if (pongpage) {
+        const existingButtons = pongpage.querySelectorAll('button');
+        existingButtons.forEach(btn => btn.remove());
       }
 
       const startLocalGameBtn = document.createElement('button');
