@@ -5,34 +5,54 @@ services:
       dockerfile: ./nginx/Dockerfile
     container_name: nginx
     ports:
+      # - "80:80"        // pour faire plus jolie apres (https://localhost direct)
+      # - "443:443"     // pour faire plus jolie apres
+      - "8080:80"
       - "8443:443"
+    depends_on:
+      - backend
+      - websocket-pong
+      - websocket-tournament
+    networks:
+      - app-network
+
   backend:
     build:
       context: ./srcs/back
     container_name: backend
-    ports:
-      - "3000:3000"
     # volumes:
     #   - ./srcs/back:/app
     working_dir: /app
     command: ["npm", "run", "dev"]
+    expose:
+      - "3000"
+    networks:
+      - app-network
 
   websocket-pong:
     build:
       context: .
       dockerfile: Dockerfile.ws-pong
     container_name: websocket-pong
-    ports:
-      - "8081:8081"
     working_dir: /app
     command: ["node", "ws-pong-server.js"]
+    expose:
+      - "8081"
+    networks:
+      - app-network
 
   websocket-tournament:
     build:
       context: .
       dockerfile: Dockerfile.ws-tournament
     container_name: websocket-tournament
-    ports:
-      - "8082:8082"
     working_dir: /app
     command: ["node", "ws-tournament-server.js"]
+    expose:
+      - "8082"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

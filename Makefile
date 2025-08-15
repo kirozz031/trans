@@ -3,10 +3,13 @@ BACK_DIR=srcs/back
 
 .PHONY: all front back docker build up clean re
 
-all: front back ws-pong docker up
+all: front back ws-pong ws-tournament docker up
 
 ws-pong:
 	docker compose build websocket-pong
+
+ws-tournament:
+	docker compose build websocket-tournament
 
 front:
 	cd $(FRONT_DIR) && npm install && npx tsc

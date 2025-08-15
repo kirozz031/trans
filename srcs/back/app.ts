@@ -143,8 +143,9 @@ app.post('/api/login', {
 
   const token = app.jwt.sign({ id: user.id, email: user.email });
   // Safer cookie (JS cannot read it). If you want localStorage instead, return {token}.
+  // In production behind HTTPS, set secure cookie
   reply
-    .setCookie('token', token, { httpOnly: true, secure: false, sameSite: 'lax', path: '/' })
+    .setCookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' })
     .send({ ok: true });
 });
 

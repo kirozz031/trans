@@ -37,7 +37,13 @@ const tournoisBtn = document.getElementById('tournois-button') as HTMLButtonElem
 const localGameBtn = document.getElementById('local-game-button') as HTMLButtonElement | null;
 
 let pingInterval: number | undefined;
-let currentPublicUserId: number | null = null; // Variable globale pour stocker l'ID de l'utilisateur public
+let currentPublicUserId: number | null = null;
+
+// Variables globales pour les graphiques
+let winLossChart: any = null;
+let matchTypesChart: any = null;
+let publicWinLossChart: any = null;
+let publicMatchTypesChart: any = null;
 
 pingInterval = window.setInterval(async () => {
   try {
@@ -50,9 +56,84 @@ pingInterval = window.setInterval(async () => {
   }
 }, 10_000);
 
-if (tournoisBtn && tournamentSection) {
+  if (tournoisBtn && tournamentSection) {
   tournoisBtn.addEventListener('click', () => {
     showView('tournament');
+  });
+}
+
+// Fonctions utilitaires pour les graphiques
+function createWinLossChart(ctx: any, wins: number, losses: number) {
+  return new (window as any).Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Victoires', 'Défaites'],
+      datasets: [{
+        data: [wins, losses],
+        backgroundColor: ['#22c55e', '#ef4444'],
+        borderColor: ['#16a34a', '#dc2626'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#ffffff',
+            font: {
+              size: 12
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function createMatchTypesChart(ctx: any, normalMatches: number, tournamentMatches: number) {
+  return new (window as any).Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Parties normales', 'Parties de tournoi'],
+      datasets: [{
+        data: [normalMatches, tournamentMatches],
+        backgroundColor: ['#8b5cf6', '#f59e0b'],
+        borderColor: ['#7c3aed', '#d97706'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#ffffff',
+            stepSize: 1
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        },
+        x: {
+          ticks: {
+            color: '#ffffff'
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)'
+          }
+        }
+      }
+    }
   });
 }
 
@@ -146,7 +227,7 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         let gameState: any = null;
         let animationId: number | null = null;
         let finished: boolean = false;
-        ws = new WebSocket('ws://localhost:8081');
+        ws = new WebSocket(`wss://${location.host}/ws/pong`);
         ws.onopen = async () => {
           const response = await fetch('/api/me', {
             credentials: 'include'
@@ -340,8 +421,9 @@ function showView(view: 'login' | 'register' | 'home' | 'game' | 'profile' | 'pu
         let gameState: any = null;
         let animationId: number | null = null;
         let finished: boolean = false;
-        
-        ws = new WebSocket('ws://localhost:8081');
+
+        // Use WSS via Nginx reverse proxy
+        ws = new WebSocket(`wss://${location.host}/ws/pong`);
         ws.onopen = () => {
           ws.send(JSON.stringify({ type: 'join_local' }));
         };
@@ -808,14 +890,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const historyPanel = document.getElementById('profile-history-panel');
   if (tabInfo && tabHistory && infoPanel && historyPanel) {
     tabInfo.addEventListener('click', () => {
-      tabInfo.classList.add('bg-gray-700');
-      tabHistory.classList.remove('bg-gray-700');
+      tabInfo.classList.add('bg-blue-600');
+      tabInfo.classList.remove('bg-gray-800');
+      tabHistory.classList.remove('bg-blue-600');
+      tabHistory.classList.add('bg-gray-800');
       infoPanel.classList.remove('hidden');
       historyPanel.classList.add('hidden');
     });
     tabHistory.addEventListener('click', () => {
-      tabHistory.classList.add('bg-gray-700');
-      tabInfo.classList.remove('bg-gray-700');
+      tabHistory.classList.add('bg-blue-600');
+      tabHistory.classList.remove('bg-gray-800');
+      tabInfo.classList.remove('bg-blue-600');
+      tabInfo.classList.add('bg-gray-800');
       infoPanel.classList.add('hidden');
       historyPanel.classList.remove('hidden');
       renderMatchHistory();
@@ -884,7 +970,17 @@ async function renderMatchHistory() {
     
     if (matches.length === 0) {
       historyList.textContent = 'Aucune partie jouée pour le moment.';
-      statsDiv.innerHTML = '<p>Aucune statistique disponible.</p>';
+      // Nettoyer les graphiques existants s'il n'y a pas de données
+      const totalWinsEl = document.getElementById('total-wins');
+      const totalLossesEl = document.getElementById('total-losses');
+      const winRateEl = document.getElementById('win-rate');
+      const totalMatchesEl = document.getElementById('total-matches');
+      
+      if (totalWinsEl) totalWinsEl.textContent = '0';
+      if (totalLossesEl) totalLossesEl.textContent = '0';
+      if (winRateEl) winRateEl.textContent = '0%';
+      if (totalMatchesEl) totalMatchesEl.textContent = '0';
+      
       return;
     }
 
@@ -933,36 +1029,35 @@ async function renderMatchHistory() {
     const tournamentMatches = matches.filter((match: any) => match.matchType.startsWith('TOURNAMENT'));
     const normalMatches = matches.filter((match: any) => match.matchType === 'NORMAL');
     
-    statsDiv.innerHTML = `
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-green-400 font-semibold">Victoires</h4>
-          <p class="text-2xl font-bold">${wins}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-red-400 font-semibold">Défaites</h4>
-          <p class="text-2xl font-bold">${losses}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-blue-400 font-semibold">Taux de victoire</h4>
-          <p class="text-2xl font-bold">${winRate}%</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-yellow-400 font-semibold">Total parties</h4>
-          <p class="text-2xl font-bold">${totalMatches}</p>
-        </div>
-      </div>
-      <div class="mt-4 grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-purple-400 font-semibold">Parties normales</h4>
-          <p class="text-xl font-bold">${normalMatches.length}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-orange-400 font-semibold">Parties de tournoi</h4>
-          <p class="text-xl font-bold">${tournamentMatches.length}</p>
-        </div>
-      </div>
-    `;
+    // Mettre à jour les statistiques textuelles
+    const totalWinsEl = document.getElementById('total-wins');
+    const totalLossesEl = document.getElementById('total-losses');
+    const winRateEl = document.getElementById('win-rate');
+    const totalMatchesEl = document.getElementById('total-matches');
+    
+    if (totalWinsEl) totalWinsEl.textContent = wins.toString();
+    if (totalLossesEl) totalLossesEl.textContent = losses.toString();
+    if (winRateEl) winRateEl.textContent = `${winRate}%`;
+    if (totalMatchesEl) totalMatchesEl.textContent = totalMatches.toString();
+
+    // Créer les graphiques
+    setTimeout(() => {
+      // Détruire les graphiques existants
+      if (winLossChart) winLossChart.destroy();
+      if (matchTypesChart) matchTypesChart.destroy();
+
+      // Créer les nouveaux graphiques
+      const winLossCtx = document.getElementById('winLossChart') as HTMLCanvasElement;
+      const matchTypesCtx = document.getElementById('matchTypesChart') as HTMLCanvasElement;
+
+      if (winLossCtx) {
+        winLossChart = createWinLossChart(winLossCtx.getContext('2d'), wins, losses);
+      }
+      
+      if (matchTypesCtx) {
+        matchTypesChart = createMatchTypesChart(matchTypesCtx.getContext('2d'), normalMatches.length, tournamentMatches.length);
+      }
+    }, 100);
 
   } catch (error) {
     console.error('Erreur lors du chargement de l\'historique:', error);
@@ -997,36 +1092,35 @@ async function renderPublicProfileStats(userId: number) {
     const tournamentMatches = matches.filter((match: any) => match.matchType.startsWith('TOURNAMENT'));
     const normalMatches = matches.filter((match: any) => match.matchType === 'NORMAL');
     
-    statsDiv.innerHTML = `
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-green-400 font-semibold">Victoires</h4>
-          <p class="text-2xl font-bold">${wins}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-red-400 font-semibold">Défaites</h4>
-          <p class="text-2xl font-bold">${losses}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-blue-400 font-semibold">Taux de victoire</h4>
-          <p class="text-2xl font-bold">${winRate}%</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-yellow-400 font-semibold">Total parties</h4>
-          <p class="text-2xl font-bold">${totalMatches}</p>
-        </div>
-      </div>
-      <div class="mt-4 grid grid-cols-2 gap-4">
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-purple-400 font-semibold">Parties normales</h4>
-          <p class="text-xl font-bold">${normalMatches.length}</p>
-        </div>
-        <div class="bg-gray-800 p-3 rounded">
-          <h4 class="text-orange-400 font-semibold">Parties de tournoi</h4>
-          <p class="text-xl font-bold">${tournamentMatches.length}</p>
-        </div>
-      </div>
-    `;
+    // Mettre à jour les statistiques textuelles du profil public
+    const publicTotalWinsEl = document.getElementById('public-total-wins');
+    const publicTotalLossesEl = document.getElementById('public-total-losses');
+    const publicWinRateEl = document.getElementById('public-win-rate');
+    const publicTotalMatchesEl = document.getElementById('public-total-matches');
+    
+    if (publicTotalWinsEl) publicTotalWinsEl.textContent = wins.toString();
+    if (publicTotalLossesEl) publicTotalLossesEl.textContent = losses.toString();
+    if (publicWinRateEl) publicWinRateEl.textContent = `${winRate}%`;
+    if (publicTotalMatchesEl) publicTotalMatchesEl.textContent = totalMatches.toString();
+
+    // Créer les graphiques pour le profil public
+    setTimeout(() => {
+      // Détruire les graphiques existants
+      if (publicWinLossChart) publicWinLossChart.destroy();
+      if (publicMatchTypesChart) publicMatchTypesChart.destroy();
+
+      // Créer les nouveaux graphiques
+      const publicWinLossCtx = document.getElementById('publicWinLossChart') as HTMLCanvasElement;
+      const publicMatchTypesCtx = document.getElementById('publicMatchTypesChart') as HTMLCanvasElement;
+
+      if (publicWinLossCtx) {
+        publicWinLossChart = createWinLossChart(publicWinLossCtx.getContext('2d'), wins, losses);
+      }
+      
+      if (publicMatchTypesCtx) {
+        publicMatchTypesChart = createMatchTypesChart(publicMatchTypesCtx.getContext('2d'), normalMatches.length, tournamentMatches.length);
+      }
+    }, 100);
 
   } catch (error) {
     console.error('Erreur lors du chargement des statistiques:', error);
@@ -1117,7 +1211,8 @@ if (tournamentSection) {
       target.textContent = 'En attente...';
       target.setAttribute('disabled', 'true');
       
-      const ws = new WebSocket('ws://localhost:8082');
+      // Use WSS via Nginx reverse proxy
+      const ws = new WebSocket(`wss://${location.host}/ws/tournament`);
       let gameWs: WebSocket | null = null;
       let playernumber: number | null = null;
       let gameState: any = null;

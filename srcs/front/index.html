@@ -5,6 +5,7 @@
   <title>Pong</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* Custom scrollbar styles */
     .custom-scrollbar {
@@ -143,11 +144,11 @@
           </div>
         </div>
         <div id="profile-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
-          <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-3xl border border-gray-700">
+          <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-4xl border border-gray-700">
             <div class="flex items-center mb-4">
               <h2 class="text-xl text-white font-bold mr-6">Mon profil</h2>
               <button id="profile-tab-info" class="px-4 py-2 text-white bg-blue-600 rounded font-bold mr-2">Profil</button>
-              <button id="profile-tab-history" class="px-4 py-2 text-white bg-gray-800 rounded font-bold">Historique</button>
+              <button id="profile-tab-history" class="px-4 py-2 text-white bg-gray-800 rounded font-bold">Statistiques</button>
             </div>
             <div id="profile-info-panel" class="mt-4">
               <div class="flex flex-col md:flex-row gap-6">
@@ -179,16 +180,52 @@
                 </div>
               </div>
             </div>
-            <div id="profile-history-panel" class="mt-4 hidden">
-              <h3 class="text-lg mb-2 text-white">Historique de partie</h3>
+            <div id="profile-history-panel" class="mt-4 hidden max-h-96 overflow-y-auto custom-scrollbar">
+              <h3 class="text-lg mb-2 text-white">Historique des parties</h3>
               <div id="profile-history-list" class="mb-4 text-white max-h-64 overflow-y-auto custom-scrollbar"></div>
               <h3 class="text-lg mb-2 text-white">Statistiques</h3>
-              <div id="profile-stats" class="mb-4 text-white"></div>
+              <div id="profile-stats" class="mb-4 text-white">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div class="bg-gray-800 p-4 rounded">
+                    <h4 class="text-lg font-semibold text-white mb-2">Victoires vs Défaites</h4>
+                    <div class="chart-container" style="position: relative; height: 200px;">
+                      <canvas id="winLossChart"></canvas>
+                    </div>
+                  </div>
+                  <div class="bg-gray-800 p-4 rounded">
+                    <h4 class="text-lg font-semibold text-white mb-2">Types de parties</h4>
+                    <div class="chart-container" style="position: relative; height: 200px;">
+                      <canvas id="matchTypesChart"></canvas>
+                    </div>
+                  </div>
+                  <div class="bg-gray-800 p-4 rounded col-span-1 lg:col-span-2">
+                    <h4 class="text-lg font-semibold text-white mb-2">Statistiques générales</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                      <div class="bg-gray-700 p-3 rounded">
+                        <p class="text-2xl font-bold text-green-400" id="total-wins">0</p>
+                        <p class="text-sm text-gray-300">Victoires</p>
+                      </div>
+                      <div class="bg-gray-700 p-3 rounded">
+                        <p class="text-2xl font-bold text-red-400" id="total-losses">0</p>
+                        <p class="text-sm text-gray-300">Défaites</p>
+                      </div>
+                      <div class="bg-gray-700 p-3 rounded">
+                        <p class="text-2xl font-bold text-blue-400" id="win-rate">0%</p>
+                        <p class="text-sm text-gray-300">Taux victoire</p>
+                      </div>
+                      <div class="bg-gray-700 p-3 rounded">
+                        <p class="text-2xl font-bold text-yellow-400" id="total-matches">0</p>
+                        <p class="text-sm text-gray-300">Total parties</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div id="public-profile-section" class="hidden fixed inset-0 flex items-center justify-center z-50">
-          <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-3xl border border-gray-700">
+          <div class="bg-gray-900 p-6 rounded shadow-md w-full max-w-4xl border border-gray-700">
             <div class="flex items-center mb-4">
               <h2 class="text-xl text-white font-bold mr-6">Profil utilisateur</h2>
               <button id="public-profile-tab-info" class="px-4 py-2 text-white bg-blue-600 rounded font-bold mr-2">Profil</button>
@@ -204,14 +241,50 @@
                 </div>
                 <div class="md:w-2/3 w-full">
                   <hr class="my-4 md:hidden border-gray-700">
-                  <div>
+                  <div class="max-h-96 overflow-y-auto custom-scrollbar">
                     <h3 class="text-lg mb-2 text-white">Statistiques</h3>
-                    <div id="public-profile-stats" class="mb-4 text-white"></div>
+                    <div id="public-profile-stats" class="mb-4 text-white">
+                      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-gray-800 p-4 rounded">
+                          <h4 class="text-lg font-semibold text-white mb-2">Victoires vs Défaites</h4>
+                          <div class="chart-container" style="position: relative; height: 200px;">
+                            <canvas id="publicWinLossChart"></canvas>
+                          </div>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded">
+                          <h4 class="text-lg font-semibold text-white mb-2">Types de parties</h4>
+                          <div class="chart-container" style="position: relative; height: 200px;">
+                            <canvas id="publicMatchTypesChart"></canvas>
+                          </div>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded col-span-1 lg:col-span-2">
+                          <h4 class="text-lg font-semibold text-white mb-2">Statistiques générales</h4>
+                          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                            <div class="bg-gray-700 p-3 rounded">
+                              <p class="text-2xl font-bold text-green-400" id="public-total-wins">0</p>
+                              <p class="text-sm text-gray-300">Victoires</p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                              <p class="text-2xl font-bold text-red-400" id="public-total-losses">0</p>
+                              <p class="text-sm text-gray-300">Défaites</p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                              <p class="text-2xl font-bold text-blue-400" id="public-win-rate">0%</p>
+                              <p class="text-sm text-gray-300">Taux victoire</p>
+                            </div>
+                            <div class="bg-gray-700 p-3 rounded">
+                              <p class="text-2xl font-bold text-yellow-400" id="public-total-matches">0</p>
+                              <p class="text-sm text-gray-300">Total parties</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div id="public-profile-history-panel" class="mt-4 hidden">
+            <div id="public-profile-history-panel" class="mt-4 hidden max-h-96 overflow-y-auto custom-scrollbar">
               <h3 class="text-lg mb-2 text-white">Historique des parties</h3>
               <div id="public-profile-history-list" class="mb-4 text-white max-h-64 overflow-y-auto custom-scrollbar"></div>
             </div>

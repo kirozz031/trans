@@ -1,5 +1,8 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8081 });
+const wss = new WebSocket.Server({ 
+  port: 8081,
+  host: '0.0.0.0'
+});
 
 async function saveMatch(player1Id, player2Id, player1Score, player2Score, matchType = 'NORMAL') {
   try {
@@ -255,4 +258,4 @@ function startGameLoop(room) {
   loop();
 }
 
-console.log('WebSocket Pong server running on ws://localhost:8081');
+console.log('WebSocket Pong server running on ws://0.0.0.0:8081');

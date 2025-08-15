@@ -1,5 +1,8 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 8082 });
+const wss = new WebSocket.Server({ 
+  port: 8082,
+  host: '0.0.0.0'
+});
 
 let slots = [null, null, null, null];
 let clients = [null, null, null, null];
@@ -256,4 +259,4 @@ wss.on('connection', (ws) => {
     }
   });
 });
-console.log('Tournoi WebSocket server running on ws://localhost:8082');
+console.log('Tournoi WebSocket server running on ws://0.0.0.0:8082');
